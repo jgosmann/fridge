@@ -151,7 +151,14 @@ class TestFridgeTrialsApi(FrigdeFixture):
         assert_that(trial.revisions, contains(class_with(
             revision=repo.current_revision())))
 
-        # TODO dirty git repo fail
+    @raises(FridgeError)
+    def test_raises_exception_for_dirty_repo(self):
+        repo = self.create_git_repo_with_dummy_commit(self.fridge_path)
+        with open(os.path.join(self.fridge_path, 'dirty.txt'), 'w') as file:
+            file.write('dirty')
+
+        trial = self.experiment.create_trial()
+        trial.run(lambda: None)
 
     @staticmethod
     def create_git_repo_with_dummy_commit(path):
@@ -159,6 +166,9 @@ class TestFridgeTrialsApi(FrigdeFixture):
         filename = os.path.join(path, 'file.txt')
         with open(filename, 'w') as file:
             file.write('content')
-        repo.add([filename])
+        gitignore_path = os.path.join(path, '.gitignore')
+        with open(gitignore_path, 'w') as file:
+            file.write('.fridge')
+        repo.add([filename, gitignore_path])
         repo.commit('Initial commit.')
         return repo

@@ -24,6 +24,9 @@ class GitRepo(object):
         return subprocess.check_output(
             ['git', cmd] + list(args), cwd=self.path)
 
+    def isdirty(self):
+        return self.do('status', '--porcelain').strip() != b''
+
     @classmethod
     def isrepo(cls, path):
         return subprocess.call(
