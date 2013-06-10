@@ -1,37 +1,97 @@
 #!/usr/bin/env python
 
-from fridge.fridge import Fridge
-from fridge.config import Config, Specification, Option
-import unittest
+from datetime import datetime
+from fridge import Fridge, FridgeError
+from hamcrest import assert_that, equal_to, has_item, is_
+from matchers import class_with
+from nose.tools import raises
+import shutil
+import tempfile
 
 
-class TestFridge(unittest.TestCase):
-    spec = Specification(0, {
-        'some_opt': Option(int),
-    })
+class DateTimeProviderMock(datetime):
+    timestamp = 0
 
-    def test_stores_trial_data(self):
-        frd = Fridge(':memory:', self.spec)
-        frd.init()
-        experiment = frd.create_experiment('test', 'desc')
-
-        config = Config()
-        config.root.some_opt = 42
-        trial = experiment.create_trial(config)
-        trial.reason = 'For testing.'
-        trial.start()
-        # call to program producing data
-        trial.finished()
-
-        self.assertEqual(frd.trials.count(), 1)
-        trial = frd.trials[0]
-        # TODO store config
-        #self.assertEqual(trial.config.root.some_opt, 42)
-        self.assertEqual(trial.reason, 'For testing.')
-        self.assertEqual(trial.experiment.name, 'test')
-
-        # TODO result comments, start, stop, experiment
+    @classmethod
+    def now(cls, tz=None):
+        assert tz is None, 'Timezone handling not mocked'
+        return datetime.fromtimestamp(cls.timestamp)
 
 
-if __name__ == '__main__':
-    unittest.main()
+class FrigdeFixture(object):
+    def setUp(self):
+        self.datetime_provider = DateTimeProviderMock
+        self.fridge_path = tempfile.mkdtemp()
+        Fridge.init_dir(self.fridge_path)
+        self.open_fridge()
+
+    def tearDown(self):
+        self.fridge.close()
+        shutil.rmtree(self.fridge_path)
+
+    def open_fridge(self):
+        self.fridge = Fridge(self.fridge_path)
+        self.fridge.datetime_provider = self.datetime_provider
+
+    def reopen_fridge(self):
+        self.fridge.close()
+        self.open_fridge()
+
+
+class TestFridgeInitApi(object):
+    @raises(FridgeError)
+    def test_raises_exception_when_already_initialized(self):
+        fridge_path = tempfile.mkdtemp()
+        Fridge.init_dir(fridge_path)
+        Fridge.init_dir(fridge_path)
+
+
+class TestFridgeExperimentApi(FrigdeFixture):
+    def test_stores_created_experiment(self):
+        experiment_name = 'somename'
+        experiment_desc = 'somedesc'
+        self.fridge.create_experiment(experiment_name, experiment_desc)
+        self.reopen_fridge()
+        assert_that(self.fridge.experiments, has_item(class_with(
+            name=experiment_name, description=experiment_desc)))
+
+    def test_creation_returns_experiment(self):
+        experiment_name = 'somename'
+        experiment_desc = 'somedesc'
+        exp = self.fridge.create_experiment(experiment_name, experiment_desc)
+        assert_that(exp, is_(class_with(
+            name=experiment_name, description=experiment_desc)))
+
+    def test_allows_to_access_experiments_by_name(self):
+        experiment_name = 'somename'
+        experiment_desc = 'somedesc'
+        self.fridge.create_experiment(experiment_name, experiment_desc)
+        assert_that(
+            self.fridge.experiments.get(experiment_name), is_(class_with(
+                name=experiment_name, description=experiment_desc)))
+
+    def test_experiment_has_creation_date(self):
+        timestamp = 90
+        self.datetime_provider.timestamp = timestamp
+        exp = self.fridge.create_experiment('unused', 'unused')
+        assert_that(
+            exp.created, is_(equal_to(datetime.fromtimestamp(timestamp))))
+
+
+#class TestFridgeTrialsApi(FrigdeFixture):
+    #def setUp(self):
+        #super().setUp()
+        #self.experiment = self.fridge.create_experiment('test', 'unused_desc')
+
+    #def reopen_fridge(self):
+        #super().reopen_fridge()
+        #self.experiment = self.fridge.experiments[0]
+
+    #def test_stores_trial_with_reason(self):
+        #trial = self.experiment.create_trial()
+        #trial.reason = 'For testing.'
+        #trial.run()  # TODO run something real
+
+        #self.reopen_fridge()
+        #assert_that(
+            #self.fridge.trials, contains(trial_with(reason=trial.reason)))

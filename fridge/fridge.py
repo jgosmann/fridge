@@ -3,6 +3,8 @@ from sqlalchemy import \
     create_engine, Column, DateTime, ForeignKey, Integer, Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+import os
+import os.path
 
 
 Base = declarative_base()
@@ -18,13 +20,17 @@ class Experiment(Base):
     def __init__(self, fridge, name, description=''):
         self.fridge = fridge
         self.name = name
-        self.created = datetime.now()
+        self.created = fridge.datetime_provider.now()
         self.description = description
 
     def create_trial(self, config):
         trial = Trial(self.fridge, self, config)
         self.fridge.add(trial)
         return trial
+
+    def __repr__(self):
+        return '<experiment %s, created %s, desc: %s>' % (
+            self.name, str(self.created), self.description)
 
 
 class Trial(Base):
@@ -58,15 +64,23 @@ class Trial(Base):
 
 
 class Fridge(object):
-    def __init__(self, db_path, spec):
-        self.engine = create_engine('sqlite:///' + db_path)
+    DIRNAME = '.fridge'
+    DBNAME = 'fridge.db'
+
+    def __init__(self, path):
+        self.engine = create_engine(self.path_to_db_file(path))
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
-        self.spec = spec
+        self.experiments = self.session.query(Experiment)
         self.trials = self.session.query(Trial)
+        self.datetime_provider = datetime
 
     def add(self, obj):
         self.session.add(obj)
+
+    def close(self):
+        self.commit()
+        self.session.close()
 
     def commit(self):
         self.session.commit()
@@ -76,5 +90,19 @@ class Fridge(object):
         self.add(experiment)
         return experiment
 
-    def init(self):
-        Base.metadata.create_all(self.engine)
+    @classmethod
+    def init_dir(cls, path):
+        fridge_path = os.path.join(path, cls.DIRNAME)
+        if os.path.exists(fridge_path):
+            raise FridgeError('Already initialized.')
+        os.mkdir(fridge_path)
+        engine = create_engine(cls.path_to_db_file(path))
+        Base.metadata.create_all(engine)
+
+    @classmethod
+    def path_to_db_file(cls, basepath):
+        return 'sqlite:///' + os.path.join(basepath, cls.DIRNAME, cls.DBNAME)
+
+
+class FridgeError(Exception):
+    pass
