@@ -83,12 +83,19 @@ class Trial(Base):
         self.start = self.fridge.datetime_provider.now()
 
     def _record_revisions(self):
-        for p in os.listdir(self.fridge.path):
-            path = os.path.join(self.fridge.path, p)
-            if os.path.isdir(path) and GitRepo.isrepo(path):
-                rev = Revision(p, GitRepo(path).current_revision())
-                rev.trial = self
-                self.fridge.add(rev)
+        if not self._record_revision_of_path('.'):
+            for path in os.listdir(self.fridge.path):
+                self._record_revision_of_path(path)
+
+    def _record_revision_of_path(self, p):
+        recorded = False
+        path = os.path.join(self.fridge.path, p)
+        if os.path.isdir(path) and GitRepo.isrepo(path):
+            rev = Revision(p, GitRepo(path).current_revision())
+            rev.trial = self
+            self.fridge.add(rev)
+            recorded = True
+        return recorded
 
     def _record_end_time(self):
         self.end = self.fridge.datetime_provider.now()

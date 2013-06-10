@@ -140,6 +140,19 @@ class TestFridgeTrialsApi(FrigdeFixture):
         actual_revisions = [(rev.path, rev.revision) for rev in trial.revisions]
         assert_that(actual_revisions, contains_inanyorder(*expected_revisions))
 
+    def test_stores_git_sourcecode_revision_for_single_root_repo(self):
+        repo = self.create_git_repo_with_dummy_commit(self.fridge_path)
+        trial = self.experiment.create_trial()
+        trial.run(lambda: None)
+        trial_id = trial.id
+        self.reopen_fridge()
+
+        trial = self.fridge.trials.get(trial_id)
+        assert_that(trial.revisions, contains(class_with(
+            revision=repo.current_revision())))
+
+        # TODO dirty git repo fail
+
     @staticmethod
     def create_git_repo_with_dummy_commit(path):
         repo = GitRepo.init(path)
