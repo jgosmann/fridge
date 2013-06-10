@@ -1,8 +1,10 @@
 from datetime import datetime
 from sqlalchemy import \
-    create_engine, Column, DateTime, ForeignKey, Integer, Sequence, String, Text
+    create_engine, Column, DateTime, ForeignKey, Integer, Sequence, String, \
+    Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from .vcs import GitRepo
 import os
 import os.path
 
@@ -33,6 +35,24 @@ class Experiment(Base):
             self.name, str(self.created), self.description)
 
 
+class Revision(Base):
+    __tablename__ = 'revisions'
+
+    id = Column(Integer, Sequence('repository_id_seq'), primary_key=True)
+    path = Column(String(), nullable=False)
+    revision = Column(String(), nullable=False)
+    trial_id = Column(Integer, ForeignKey('trials.id'))
+
+    trial = relationship('Trial', backref=backref('revisions'))
+
+    def __init__(self, path, revision):
+        self.path = path
+        self.revision = revision
+
+    def __repr__(self):
+        return '<revision %s of %s>' % (self.revision, self.path)
+
+
 class Trial(Base):
     __tablename__ = 'trials'
 
@@ -50,11 +70,28 @@ class Trial(Base):
         self.experiment = experiment
 
     def run(self, fn, *args):
-        self.start = self.fridge.datetime_provider.now()
+        self._record_start_time()
+        self._record_revisions()
         self.fridge.commit()
+
         fn(*args)
-        self.end = self.fridge.datetime_provider.now()
+
+        self._record_end_time()
         self.fridge.commit()
+
+    def _record_start_time(self):
+        self.start = self.fridge.datetime_provider.now()
+
+    def _record_revisions(self):
+        for p in os.listdir(self.fridge.path):
+            path = os.path.join(self.fridge.path, p)
+            if os.path.isdir(path) and GitRepo.isrepo(path):
+                rev = Revision(p, GitRepo(path).current_revision())
+                rev.trial = self
+                self.fridge.add(rev)
+
+    def _record_end_time(self):
+        self.end = self.fridge.datetime_provider.now()
 
     def __repr__(self):
         return '<trial %i in experiment %s, start %s, end %s, reason: %s>' % (
@@ -67,6 +104,7 @@ class Fridge(object):
     DBNAME = 'fridge.db'
 
     def __init__(self, path):
+        self.path = path
         self.engine = create_engine(self.path_to_db_file(path))
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()

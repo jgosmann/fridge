@@ -2,9 +2,12 @@
 
 from datetime import datetime
 from fridge import Fridge, FridgeError
-from hamcrest import assert_that, equal_to, has_item, is_
+from fridge.vcs import GitRepo
+from hamcrest import assert_that, contains, contains_inanyorder, equal_to, \
+    has_item, is_
 from matchers import class_with
 from nose.tools import raises
+import os.path
 import shutil
 import tempfile
 
@@ -110,3 +113,39 @@ class TestFridgeTrialsApi(FrigdeFixture):
         assert_that(self.fridge.trials, has_item(class_with(
             start=datetime.fromtimestamp(timestamp_start),
             end=datetime.fromtimestamp(timestamp_end))))
+
+    def test_calls_function_with_args(self):
+        expected_args = [4, 'xyz']
+        called = False
+
+        def task(*args):
+            nonlocal called
+            called = True
+            assert_that(args, contains(*expected_args))
+
+        trial = self.experiment.create_trial()
+        trial.run(task, *expected_args)
+        assert_that(called, is_(True))
+
+    def test_stores_git_sourcecode_revisions(self):
+        repos = [(p, self.create_git_repo_with_dummy_commit(
+            os.path.join(self.fridge_path, p))) for p in ['repoA', 'repoB']]
+        trial = self.experiment.create_trial()
+        trial.run(lambda: None)
+        trial_id = trial.id
+        self.reopen_fridge()
+
+        expected_revisions = [(p, repo.current_revision()) for p, repo in repos]
+        trial = self.fridge.trials.get(trial_id)
+        actual_revisions = [(rev.path, rev.revision) for rev in trial.revisions]
+        assert_that(actual_revisions, contains_inanyorder(*expected_revisions))
+
+    @staticmethod
+    def create_git_repo_with_dummy_commit(path):
+        repo = GitRepo.init(path)
+        filename = os.path.join(path, 'file.txt')
+        with open(filename, 'w') as file:
+            file.write('content')
+        repo.add([filename])
+        repo.commit('Initial commit.')
+        return repo
