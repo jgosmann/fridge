@@ -23,8 +23,8 @@ class Experiment(Base):
         self.created = fridge.datetime_provider.now()
         self.description = description
 
-    def create_trial(self, config):
-        trial = Trial(self.fridge, self, config)
+    def create_trial(self):
+        trial = Trial(self.fridge, self)
         self.fridge.add(trial)
         return trial
 
@@ -37,24 +37,23 @@ class Trial(Base):
     __tablename__ = 'trials'
 
     id = Column(Integer, Sequence('trial_id_seq'), primary_key=True)
-    reason = Column(Text, nullable=False)
+    reason = Column(Text, nullable=False, default='')
     start = Column(DateTime(timezone=True))
-    end = Column(DateTime(timezone=False))
+    end = Column(DateTime(timezone=True))
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
 
     experiment = relationship(
         'Experiment', backref=backref('trials', order_by=id))
 
-    def __init__(self, fridge, experiment, config):
+    def __init__(self, fridge, experiment):
         self.fridge = fridge
         self.experiment = experiment
 
-    def start(self):
-        self.start = datetime.now()
+    def run(self, fn, *args):
+        self.start = self.fridge.datetime_provider.now()
         self.fridge.commit()
-
-    def finished(self):
-        self.end = datetime.now()
+        fn(*args)
+        self.end = self.fridge.datetime_provider.now()
         self.fridge.commit()
 
     def __repr__(self):

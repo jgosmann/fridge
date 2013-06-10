@@ -78,20 +78,35 @@ class TestFridgeExperimentApi(FrigdeFixture):
             exp.created, is_(equal_to(datetime.fromtimestamp(timestamp))))
 
 
-#class TestFridgeTrialsApi(FrigdeFixture):
-    #def setUp(self):
-        #super().setUp()
-        #self.experiment = self.fridge.create_experiment('test', 'unused_desc')
+class TestFridgeTrialsApi(FrigdeFixture):
+    def setUp(self):
+        super().setUp()
+        self.experiment = self.fridge.create_experiment('test', 'unused_desc')
 
-    #def reopen_fridge(self):
-        #super().reopen_fridge()
-        #self.experiment = self.fridge.experiments[0]
+    def reopen_fridge(self):
+        super().reopen_fridge()
+        self.experiment = self.fridge.experiments[0]
 
-    #def test_stores_trial_with_reason(self):
-        #trial = self.experiment.create_trial()
-        #trial.reason = 'For testing.'
-        #trial.run()  # TODO run something real
+    def test_stores_trial_with_reason(self):
+        reason = 'For testing.'
+        trial = self.experiment.create_trial()
+        trial.reason = reason
+        trial.run(lambda: None)
 
-        #self.reopen_fridge()
-        #assert_that(
-            #self.fridge.trials, contains(trial_with(reason=trial.reason)))
+        self.reopen_fridge()
+        assert_that(self.fridge.trials, has_item(class_with(reason=reason)))
+
+    def test_records_execution_time(self):
+        timestamp_start = 90
+        timestamp_end = 160
+        trial = self.experiment.create_trial()
+
+        def task():
+            self.datetime_provider.timestamp = timestamp_end
+
+        self.datetime_provider.timestamp = timestamp_start
+        trial.run(task)
+
+        assert_that(self.fridge.trials, has_item(class_with(
+            start=datetime.fromtimestamp(timestamp_start),
+            end=datetime.fromtimestamp(timestamp_end))))

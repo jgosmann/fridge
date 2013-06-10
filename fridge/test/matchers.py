@@ -20,5 +20,22 @@ class ClassWith(BaseMatcher):
             'class with attributes matching %s' % str(self.attributes_to_match))
 
 
+class Empty(BaseMatcher):
+    def _matches(self, item):
+        if hasattr(item, '__len__'):
+            return len(item) == 0
+        elif hasattr(item, 'count'):
+            return item.count() == 0
+        raise TypeError('%s cannot be tested for emptiness.' % (
+            type(item).__name__))
+
+    def describe_to(self, description):
+        description.append_text('empty')
+
+
 def class_with(**attributes_to_match):
     return ClassWith(**attributes_to_match)
+
+
+def empty():
+    return Empty()
