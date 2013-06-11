@@ -110,15 +110,14 @@ class Trial(Base):
     def run(self, fn, *args):
         self.check_run_preconditions()
 
-        outpath = os.path.join(
-            self.fridge.config.data_path, self.experiment.name)
-        args = list(args) + [outpath]
+        args = list(args) + [self.outpath]
 
         self._record_start_time()
         self._record_revisions()
         self._record_arguments(*args)
         self.fridge.commit()
 
+        self._prepare_run()
         fn(*args)
 
         self._record_end_time()
@@ -128,6 +127,9 @@ class Trial(Base):
         for p in self._get_repo_rel_paths():
             if GitRepo(os.path.join(self.fridge.path, p)).isdirty():
                 raise FridgeError('Repository %s is dirty.' % p)
+
+    def _prepare_run(self):
+        os.makedirs(self.outpath, exist_ok=True)
 
     def _get_repo_rel_paths(self):
         if GitRepo.isrepo(os.path.join(self.fridge.path, '.')):
@@ -160,6 +162,12 @@ class Trial(Base):
         return '<trial %i in experiment %s, start %s, end %s, reason: %s>' % (
             self.id, self.experiment_name, str(self.start), str(self.end),
             self.reason)
+
+    def get_outpath(self):
+        return os.path.join(
+            self.fridge.config.data_path, self.experiment.name)
+
+    outpath = property(get_outpath)
 
 
 class StaticConfig(object):

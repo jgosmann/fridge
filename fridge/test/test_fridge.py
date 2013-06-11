@@ -275,4 +275,11 @@ class TestFridgeTrialsApi(FrigdeFixture):
         finally:
             Pickleable = orig_class
 
+    def test_outpath_exists_while_running_trial(self):
+        def check_path(outpath):
+            assert_that(os.path.isdir(outpath), is_(True))
+
+        trial = self.experiment.create_trial()
+        trial.run(check_path)
+
     # TODO store function name
