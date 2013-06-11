@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-
 from datetime import datetime
 from fridge import Fridge, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, assert_that, contains, contains_inanyorder, \
-    contains_string, equal_to, has_item, has_string, instance_of, is_
+    contains_string, equal_to, has_entry, has_item, has_string, instance_of, \
+    is_
 from matchers import class_with
 from nose.tools import raises
 import os.path
@@ -252,6 +251,23 @@ class TestFridgeTrialsApi(FrigdeFixture):
         Pickleable = None
         try:
             self.fridge.trials.get(trial_id).arguments[0].obj
+        finally:
+            Pickleable = orig_class
+
+    def test_can_access_parameters_in_dict_if_it_contains_unpickleable_values(
+            self):
+        args = ({'accessible': 42, 'not accessible': Pickleable(0)},)
+        trial = self.experiment.create_trial()
+        trial.run(lambda x: None, *args)
+        trial_id = trial.id
+        self.reopen_fridge()
+
+        global Pickleable
+        orig_class = Pickleable
+        Pickleable = None
+        try:
+            trial = self.fridge.trials.get(trial_id)
+            assert_that(trial.arguments[0].obj['accessible'], is_(42))
         finally:
             Pickleable = orig_class
 

@@ -5,14 +5,10 @@ from sqlalchemy import \
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from .vcs import GitRepo
+from . import lazyPickle as pickle
 import os
 import os.path
 import warnings
-
-try:
-    import cPickle as pickle
-except:
-    import pickle
 
 
 Base = declarative_base()
