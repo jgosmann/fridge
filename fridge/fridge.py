@@ -214,7 +214,8 @@ class Trial(Base):
 
     def get_outpath(self):
         return os.path.join(
-            self.fridge.config.data_path, self.experiment.name)
+            self.fridge.path, self.fridge.config.data_path,
+            self.experiment.name)
 
     outpath = property(get_outpath)
 

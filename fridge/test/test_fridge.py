@@ -2,8 +2,8 @@ from datetime import datetime
 from fridge import Fridge, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
-    contains_inanyorder, contains_string, equal_to, has_entry, has_item, \
-    has_string, instance_of, is_
+    contains_inanyorder, contains_string, ends_with, equal_to, has_entry, \
+    has_item, has_string, instance_of, is_
 from matchers import class_with
 from nose.tools import raises
 import hashlib
@@ -130,8 +130,8 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     def test_calls_function_with_args(self):
         args = [4, 'xyz']
-        outpath = os.path.join(
-            self.fridge.config.data_path, self.experiment.name)
+        outpath = ends_with(os.path.join(
+            self.fridge.config.data_path, self.experiment.name))
         expected_args = args + [outpath]
         called = False
 
@@ -293,6 +293,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename='file.txt', size=11,
             sha1=hashlib.sha1(b'somecontent').digest())))
 
+    # FIXME creation of Data in execution directory
     # TODO do not use final outpath during simulation, locking before copying
     # TODO ability to add outcome information
     # TODO store function name
