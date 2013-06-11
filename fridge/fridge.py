@@ -1,11 +1,13 @@
 from datetime import datetime
 from sqlalchemy import \
-    create_engine, Column, DateTime, ForeignKey, Integer, PickleType, \
-    Sequence, String, Text
+    create_engine, BINARY, Column, DateTime, Enum, ForeignKey, Integer, \
+    PickleType, Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from .vcs import GitRepo
 from .lazyPickle import lazify
+import hashlib
 import os
 import os.path
 import warnings
@@ -13,6 +15,17 @@ try:
     import cPickle as pickle
 except:
     import pickle
+
+
+# TODO test this function
+def sha1sum(path):
+    h = hashlib.sha1()
+    with open(path, 'rb') as f:
+        buf = b'\0'
+        while buf != b'':
+            buf = f.read(1024 * 1024)
+            h.update(buf)
+    return h.digest()
 
 
 Base = declarative_base()
@@ -39,6 +52,25 @@ class Experiment(Base):
     def __repr__(self):
         return '<experiment %s, created %s, desc: %s>' % (
             self.name, str(self.created), self.description)
+
+
+class File(Base):
+    __tablename__ = 'files'
+
+    id = Column(Integer, Sequence('files_id_seq'), primary_key=True)
+    type = Column(Enum('output'), nullable=False)
+    filename = Column(String(), nullable=False)
+    size = Column(Integer, nullable=False)
+    sha1 = Column(BINARY(160 / 8), nullable=False)
+    trial_id = Column(Integer, ForeignKey('trials.id'))
+
+    trial = relationship('Trial', backref=backref('files', lazy='dynamic'))
+
+    def __init__(self, type, filename, size, sha1):
+        self.type = type
+        self.filename = filename
+        self.size = size
+        self.sha1 = sha1
 
 
 class ParameterObject(Base):
@@ -100,6 +132,10 @@ class Trial(Base):
     end = Column(DateTime(timezone=True))
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
 
+    @hybrid_property
+    def outputs(self):
+        return self.files.filter(File.type == 'output')
+
     experiment = relationship(
         'Experiment', backref=backref('trials', order_by=id))
 
@@ -121,6 +157,7 @@ class Trial(Base):
         fn(*args)
 
         self._record_end_time()
+        self._record_output_files()
         self.fridge.commit()
 
     def check_run_preconditions(self):
@@ -157,6 +194,18 @@ class Trial(Base):
 
     def _record_end_time(self):
         self.end = self.fridge.datetime_provider.now()
+
+    def _record_output_files(self):
+        for dirpath, dirnames, filenames in os.walk(self.outpath):
+            filepath = dirpath[len(self.outpath):]
+            for filename in filenames:
+                self._add_file('output', os.path.join(filepath, filename))
+
+    def _add_file(self, type, filename):
+        path = os.path.join(self.outpath, filename)
+        size = os.path.getsize(path)
+        sha1 = sha1sum(path)
+        self.files.append(File(type, filename, size, sha1))
 
     def __repr__(self):
         return '<trial %i in experiment %s, start %s, end %s, reason: %s>' % (

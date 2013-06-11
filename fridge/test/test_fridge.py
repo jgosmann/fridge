@@ -6,6 +6,7 @@ from hamcrest import all_of, anything, assert_that, contains, \
     has_string, instance_of, is_
 from matchers import class_with
 from nose.tools import raises
+import hashlib
 import os.path
 import shutil
 import tempfile
@@ -282,4 +283,17 @@ class TestFridgeTrialsApi(FrigdeFixture):
         trial = self.experiment.create_trial()
         trial.run(check_path)
 
+    def test_records_information_about_written_files(self):
+        def gen_output(outpath):
+            with open(os.path.join(outpath, 'file.txt'), 'wb') as file:
+                file.write(b'somecontent')
+
+        trial = self.run_new_trial_and_reopen_fridge(gen_output)
+        assert_that(trial.outputs, has_item(class_with(
+            filename='file.txt', size=11,
+            sha1=hashlib.sha1(b'somecontent').digest())))
+
+    # TODO do not use final outpath during simulation, locking before copying
+    # TODO ability to add outcome information
     # TODO store function name
+    # TODO store stdout, stderr
