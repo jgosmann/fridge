@@ -1,12 +1,18 @@
 from datetime import datetime
 from sqlalchemy import \
-    create_engine, Column, DateTime, ForeignKey, Integer, Sequence, String, \
-    Text
+    create_engine, Column, DateTime, ForeignKey, Integer, LargeBinary, \
+    Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from .vcs import GitRepo
 import os
 import os.path
+import warnings
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 
 Base = declarative_base()
@@ -33,6 +39,38 @@ class Experiment(Base):
     def __repr__(self):
         return '<experiment %s, created %s, desc: %s>' % (
             self.name, str(self.created), self.description)
+
+
+class ParameterObject(Base):
+    __tablename__ = 'parameterObjects'
+
+    id = Column(Integer, Sequence('parameterObjects_id_seq'), primary_key=True)
+    repr = Column(String(), nullable=False)
+    _pickle = Column(LargeBinary())
+    trial_id = Column(Integer, ForeignKey('trials.id'))
+
+    trial = relationship('Trial', backref=backref('arguments'))
+    # FIXME many to many?
+    # FIXME sorting
+
+    def __init__(self, obj):
+        self.repr = repr(obj)
+        try:
+            self.obj = obj
+        except pickle.PicklingError:
+            warnings.warn(RuntimeWarning(
+                'Cannot pickle object. Only the string representation was ' +
+                'stored.'))
+
+    def get_obj(self):
+        if self._pickle is None:
+            return None
+        return pickle.loads(self._pickle)
+
+    def set_obj(self, obj):
+        self._pickle = pickle.dumps(obj)
+
+    obj = property(get_obj, set_obj)
 
 
 class Revision(Base):
@@ -74,6 +112,7 @@ class Trial(Base):
 
         self._record_start_time()
         self._record_revisions()
+        self._record_arguments(*args)
         self.fridge.commit()
 
         fn(*args)
@@ -94,6 +133,11 @@ class Trial(Base):
                 path = os.path.join(self.fridge.path, p)
                 if os.path.isdir(path) and GitRepo.isrepo(path):
                     yield p
+
+    def _record_arguments(self, *args):
+        for arg in args:
+            paramObj = ParameterObject(arg)
+            self.arguments.append(paramObj)
 
     def _record_revisions(self):
         for p in self._get_repo_rel_paths():

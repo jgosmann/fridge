@@ -3,13 +3,16 @@
 from datetime import datetime
 from fridge import Fridge, FridgeError
 from fridge.vcs import GitRepo
-from hamcrest import assert_that, contains, contains_inanyorder, equal_to, \
-    has_item, is_
+from hamcrest import all_of, assert_that, contains, contains_inanyorder, \
+    contains_string, equal_to, has_item, has_string, instance_of, is_
 from matchers import class_with
 from nose.tools import raises
 import os.path
 import shutil
 import tempfile
+import warnings
+
+import pickle
 
 
 class DateTimeProviderMock(datetime):
@@ -19,6 +22,17 @@ class DateTimeProviderMock(datetime):
     def now(cls, tz=None):
         assert tz is None, 'Timezone handling not mocked'
         return datetime.fromtimestamp(cls.timestamp)
+
+
+class Pickleable(object):
+    def __init__(self, id):
+        self.id = id
+
+    def __eq__(self, item):
+        return self.id == item.id
+
+    def __repr__(self):
+        return 'Pickable(%i)' % self.id
 
 
 class FrigdeFixture(object):
@@ -172,3 +186,73 @@ class TestFridgeTrialsApi(FrigdeFixture):
         repo.add([filename, gitignore_path])
         repo.commit('Initial commit.')
         return repo
+
+    def test_records_run_arguments_representation(self):
+        args = (42, 'some text', Pickleable(0))
+        trial = self.experiment.create_trial()
+        trial.run(lambda x, y, z: None, *args)
+        self.reopen_fridge()
+        assert_that(self.fridge.trials, has_item(class_with(
+            arguments=contains(*[class_with(repr=repr(a)) for a in args]))))
+
+    def test_records_run_arguments_objects(self):
+        args = (42, 'some text', Pickleable(0))
+        trial = self.experiment.create_trial()
+        trial.run(lambda x, y, z: None, *args)
+        self.reopen_fridge()
+        assert_that(self.fridge.trials, has_item(class_with(
+            arguments=contains(*[class_with(obj=a) for a in args]))))
+
+    def test_records_run_argument_without_object_if_pickling_fails(self):
+        unpickleable = lambda: None
+        args = (unpickleable,)
+        trial = self.experiment.create_trial()
+        trial.run(lambda x: None, *args)
+        self.reopen_fridge()
+        assert_that(self.fridge.trials, has_item(class_with(
+            arguments=contains(
+                *[class_with(repr=repr(a), obj=None) for a in args]))))
+
+    def test_issues_warning_if_pickling_of_argument_fails(self):
+        unpickleable = lambda: None
+        args = (unpickleable,)
+        trial = self.experiment.create_trial()
+        with warnings.catch_warnings(record=True) as w:
+            trial.run(lambda x: None, *args)
+            assert_that(w, has_item(class_with(message=all_of(
+                instance_of(RuntimeWarning),
+                has_string(contains_string('pickle'))))))
+
+    def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
+        args = (Pickleable(0),)
+        trial = self.experiment.create_trial()
+        trial.run(lambda x: None, *args)
+        self.reopen_fridge()
+
+        global Pickleable
+        orig_class = Pickleable
+        Pickleable = None
+        try:
+            assert_that(self.fridge.trials, has_item(class_with(
+                arguments=contains(
+                    *[class_with(repr=repr(a)) for a in args]))))
+        finally:
+            Pickleable = orig_class
+
+    @raises(pickle.UnpicklingError)
+    def test_raises_exception_on_parameter_access_if_unpickling_fails(self):
+        args = (Pickleable(0),)
+        trial = self.experiment.create_trial()
+        trial.run(lambda x: None, *args)
+        trial_id = trial.id
+        self.reopen_fridge()
+
+        global Pickleable
+        orig_class = Pickleable
+        Pickleable = None
+        try:
+            self.fridge.trials.get(trial_id).arguments[0].obj
+        finally:
+            Pickleable = orig_class
+
+    # TODO store function name
