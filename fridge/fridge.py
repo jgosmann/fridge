@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import \
-    create_engine, Column, DateTime, ForeignKey, Integer, LargeBinary, \
-    PickleType, Sequence, String, Text
+    create_engine, Column, DateTime, ForeignKey, Integer, PickleType, \
+    Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from .vcs import GitRepo
@@ -110,6 +110,10 @@ class Trial(Base):
     def run(self, fn, *args):
         self.check_run_preconditions()
 
+        outpath = os.path.join(
+            self.fridge.config.data_path, self.experiment.name)
+        args = list(args) + [outpath]
+
         self._record_start_time()
         self._record_revisions()
         self._record_arguments(*args)
@@ -158,6 +162,11 @@ class Trial(Base):
             self.reason)
 
 
+class StaticConfig(object):
+    def __init__(self):
+        self.data_path = 'Data'
+
+
 class Fridge(object):
     DIRNAME = '.fridge'
     DBNAME = 'fridge.db'
@@ -170,6 +179,7 @@ class Fridge(object):
         self.experiments = self.session.query(Experiment)
         self.trials = self.session.query(Trial)
         self.datetime_provider = datetime
+        self.config = StaticConfig()
 
     def add(self, obj):
         self.session.add(obj)
