@@ -186,31 +186,35 @@ class TestFridgeTrialsApi(FrigdeFixture):
         repo.commit('Initial commit.')
         return repo
 
+    def run_new_trial_and_reopen_fridge(self, fn, *args):
+        trial = self.experiment.create_trial()
+        trial.run(fn, *args)
+        trial_id = trial.id
+        self.reopen_fridge()
+        return self.fridge.trials.get(trial_id)
+
+
     def test_records_run_arguments_representation(self):
         args = (42, 'some text', Pickleable(0))
-        trial = self.experiment.create_trial()
-        trial.run(lambda x, y, z: None, *args)
-        self.reopen_fridge()
+        trial = self.run_new_trial_and_reopen_fridge(
+            lambda x, y, z: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(
             arguments=contains(*[class_with(repr=repr(a)) for a in args]))))
 
     def test_records_run_arguments_objects(self):
         args = (42, 'some text', Pickleable(0))
-        trial = self.experiment.create_trial()
-        trial.run(lambda x, y, z: None, *args)
-        self.reopen_fridge()
-        assert_that(self.fridge.trials, has_item(class_with(
-            arguments=contains(*[class_with(obj=a) for a in args]))))
+        trial = self.run_new_trial_and_reopen_fridge(
+            lambda x, y, z: None, *args)
+        stored_args = (a.value.retrieve() for a in trial.arguments)
+        assert_that(stored_args, contains(*args))
 
     def test_records_run_argument_without_object_if_pickling_fails(self):
         unpickleable = lambda: None
         args = (unpickleable,)
-        trial = self.experiment.create_trial()
-        trial.run(lambda x: None, *args)
-        self.reopen_fridge()
+        trial = self.run_new_trial_and_reopen_fridge(lambda x: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(
             arguments=contains(
-                *[class_with(repr=repr(a), obj=None) for a in args]))))
+                *[class_with(repr=repr(a), value=None) for a in args]))))
 
     def test_issues_warning_if_pickling_of_argument_fails(self):
         unpickleable = lambda: None
@@ -224,9 +228,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
         args = (Pickleable(0),)
-        trial = self.experiment.create_trial()
-        trial.run(lambda x: None, *args)
-        self.reopen_fridge()
+        trial = self.run_new_trial_and_reopen_fridge(lambda x: None, *args)
 
         global Pickleable
         orig_class = Pickleable
@@ -241,33 +243,27 @@ class TestFridgeTrialsApi(FrigdeFixture):
     @raises(pickle.UnpicklingError)
     def test_raises_exception_on_parameter_access_if_unpickling_fails(self):
         args = (Pickleable(0),)
-        trial = self.experiment.create_trial()
-        trial.run(lambda x: None, *args)
-        trial_id = trial.id
-        self.reopen_fridge()
+        trial = self.run_new_trial_and_reopen_fridge(lambda x: None, *args)
 
         global Pickleable
         orig_class = Pickleable
         Pickleable = None
         try:
-            self.fridge.trials.get(trial_id).arguments[0].obj
+            trial.arguments[0].value.retrieve()
         finally:
             Pickleable = orig_class
 
     def test_can_access_parameters_in_dict_if_it_contains_unpickleable_values(
             self):
         args = ({'accessible': 42, 'not accessible': Pickleable(0)},)
-        trial = self.experiment.create_trial()
-        trial.run(lambda x: None, *args)
-        trial_id = trial.id
-        self.reopen_fridge()
+        trial = self.run_new_trial_and_reopen_fridge(lambda x: None, *args)
 
         global Pickleable
         orig_class = Pickleable
         Pickleable = None
         try:
-            trial = self.fridge.trials.get(trial_id)
-            assert_that(trial.arguments[0].obj['accessible'], is_(42))
+            assert_that(
+                trial.arguments[0].value['accessible'].retrieve(), is_(42))
         finally:
             Pickleable = orig_class
 

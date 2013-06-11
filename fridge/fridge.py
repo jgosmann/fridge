@@ -1,14 +1,18 @@
 from datetime import datetime
 from sqlalchemy import \
     create_engine, Column, DateTime, ForeignKey, Integer, LargeBinary, \
-    Sequence, String, Text
+    PickleType, Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from .vcs import GitRepo
-from . import lazyPickle as pickle
+from .lazyPickle import lazify
 import os
 import os.path
 import warnings
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 
 Base = declarative_base()
@@ -42,31 +46,31 @@ class ParameterObject(Base):
 
     id = Column(Integer, Sequence('parameterObjects_id_seq'), primary_key=True)
     repr = Column(String(), nullable=False)
-    _pickle = Column(LargeBinary())
+    _pickle = Column(PickleType())
     trial_id = Column(Integer, ForeignKey('trials.id'))
 
     trial = relationship('Trial', backref=backref('arguments'))
     # FIXME many to many?
     # FIXME sorting
 
-    def __init__(self, obj):
-        self.repr = repr(obj)
+    def __init__(self, value):
+        self.repr = repr(value)
         try:
-            self.obj = obj
+            self.value = value
         except pickle.PicklingError:
             warnings.warn(RuntimeWarning(
                 'Cannot pickle object. Only the string representation was ' +
                 'stored.'))
 
-    def get_obj(self):
+    def get_value(self):
         if self._pickle is None:
             return None
-        return pickle.loads(self._pickle)
+        return self._pickle
 
-    def set_obj(self, obj):
-        self._pickle = pickle.dumps(obj)
+    def set_value(self, value):
+        self._pickle = lazify(value)
 
-    obj = property(get_obj, set_obj)
+    value = property(get_value, set_value)
 
 
 class Revision(Base):
