@@ -219,6 +219,8 @@ class Trial(Base):
             shutil.copy2(path, destfilepath)
 
     def _move_data_to_final_location(self):
+        # FIXME this function will need some kind of locking when it should
+        # be possible to run multiple trials in parallel.
         os.makedirs(self.datapath, exist_ok=True)
         for item in os.listdir(self.workpath):
             os.rename(

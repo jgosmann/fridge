@@ -309,7 +309,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         assert_that(outfile, is_(file_with_content(equal_to(b'somecontent'))))
 
 
-    # TODO do not use final outpath during simulation, locking before copying
+    # TODO store input files
     # TODO ability to add outcome information
     # TODO store function name
     # TODO store stdout, stderr
