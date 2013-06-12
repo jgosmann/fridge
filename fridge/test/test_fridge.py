@@ -327,8 +327,21 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename=filename, size=11,
             hash=hashlib.sha1(b'somecontent').digest())))
 
+    def test_archives_contents_of_referenced_files(self):
+        def gen_output(workpath):
+            with open(os.path.join(workpath, 'file.txt'), 'wb') as file:
+                file.write(b'somecontent')
+
+        trial = self.run_new_trial_and_reopen_fridge(gen_output)
+        outfile = os.path.join(
+            self.fridge.path, self.fridge.config.data_path,
+            self.experiment.name, 'file.txt')
+        os.unlink(outfile)
+        with trial.outputs[0].open('rb') as file:
+            assert_that(file, is_(file_with_content(equal_to(b'somecontent'))))
 
     # TODO store input files
     # TODO ability to add outcome information
     # TODO store function name
     # TODO store stdout, stderr
+    # TODO make config value accessible

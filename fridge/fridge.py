@@ -1,8 +1,9 @@
 from datetime import datetime
 from sqlalchemy import \
-    create_engine, BINARY, Column, DateTime, Enum, ForeignKey, Integer, \
+    create_engine, BINARY, Column, DateTime, Enum, ForeignKey, Integer,\
     PickleType, Sequence, String, Text
 from sqlalchemy.orm import backref, relationship, sessionmaker
+from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from .vcs import GitRepo
@@ -30,24 +31,30 @@ def sha1sum(path):
     return h.digest()
 
 
-Base = declarative_base()
+class InFridge(object):
+    def get_fridge(self):
+        return Fridge.session_to_fridge[object_session(self)]
+
+    fridge = property(get_fridge)
 
 
-class Experiment(Base):
+InFridgeBase = declarative_base(cls=InFridge)
+
+
+class Experiment(InFridgeBase):
     __tablename__ = 'experiments'
 
     name = Column(String(128), primary_key=True)
     created = Column(DateTime(timezone=True), nullable=False)
     description = Column(Text, nullable=False)
 
-    def __init__(self, fridge, name, description=''):
-        self.fridge = fridge
+    def __init__(self, name, description='', datetime_provider=datetime):
         self.name = name
-        self.created = fridge.datetime_provider.now()
+        self.created = datetime_provider.now()
         self.description = description
 
     def create_trial(self):
-        trial = Trial(self.fridge, self)
+        trial = Trial(self)
         self.fridge.add(trial)
         return trial
 
@@ -56,7 +63,7 @@ class Experiment(Base):
             self.name, str(self.created), self.description)
 
 
-class File(Base):
+class File(InFridgeBase):
     __tablename__ = 'files'
 
     id = Column(Integer, Sequence('files_id_seq'), primary_key=True)
@@ -74,8 +81,27 @@ class File(Base):
         self.size = size
         self.hash = hash
 
+    def open(self, mode='rb'):
+        if not mode in ['r', 'rb']:
+            raise ValueError('Only read access is allowed.')
+        return open(self._filepath, mode)
 
-class ParameterObject(Base):
+    def get_hexhash(self):
+        return binascii.hexlify(self.hash).decode()
+
+    def _get_dir(self):
+        hexhash = self.hexhash
+        return os.path.join(self.fridge.blobpath, hexhash[0:3], hexhash[3:6])
+
+    def _get_filepath(self):
+        return os.path.join(self._dir, self.hexhash)
+
+    hexhash = property(get_hexhash)
+    _dir = property(_get_dir)
+    _filepath = property(_get_filepath)
+
+
+class ParameterObject(InFridgeBase):
     __tablename__ = 'parameterObjects'
 
     id = Column(Integer, Sequence('parameterObjects_id_seq'), primary_key=True)
@@ -107,7 +133,7 @@ class ParameterObject(Base):
     value = property(get_value, set_value)
 
 
-class Revision(Base):
+class Revision(InFridgeBase):
     __tablename__ = 'revisions'
 
     id = Column(Integer, Sequence('repository_id_seq'), primary_key=True)
@@ -125,7 +151,7 @@ class Revision(Base):
         return '<revision %s of %s>' % (self.revision, self.path)
 
 
-class Trial(Base):
+class Trial(InFridgeBase):
     __tablename__ = 'trials'
 
     id = Column(Integer, Sequence('trial_id_seq'), primary_key=True)
@@ -141,8 +167,7 @@ class Trial(Base):
     experiment = relationship(
         'Experiment', backref=backref('trials', order_by=id))
 
-    def __init__(self, fridge, experiment):
-        self.fridge = fridge
+    def __init__(self, experiment):
         self.experiment = experiment
 
     def run(self, fn, *args):
@@ -210,15 +235,12 @@ class Trial(Base):
             filename = path
         size = os.path.getsize(path)
         sha1 = sha1sum(path)
-        self.files.append(File(type, filename, size, sha1))
+        file = File(type, filename, size, sha1)
+        self.files.append(file)
 
-        sha1hex = binascii.hexlify(sha1).decode()
-        destdir = os.path.join(
-            self.fridge.blobpath, sha1hex[0:3], sha1hex[3:6])
-        destfilepath = os.path.join(destdir, sha1hex)
-        if not os.path.exists(destfilepath):
-            os.makedirs(destdir, exist_ok=True)
-            shutil.copy2(path, destfilepath)
+        if not os.path.exists(file._dir):
+            os.makedirs(file._dir, exist_ok=True)
+            shutil.copy2(path, file._filepath)
 
     def _move_data_to_final_location(self):
         # FIXME this function will need some kind of locking when it should
@@ -259,11 +281,15 @@ class Fridge(object):
     DBNAME = 'fridge.db'
     WORKDIR = 'work'
 
+    session_to_fridge = {}
+
     def __init__(self, path):
         self.path = path
         self.engine = create_engine(self.path_to_db_file(path))
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
+        # FIXME use weak ref
+        self.session_to_fridge[self.session] = self
         self.experiments = self.session.query(Experiment)
         self.trials = self.session.query(Trial)
         self.datetime_provider = datetime
@@ -280,7 +306,7 @@ class Fridge(object):
         self.session.commit()
 
     def create_experiment(self, name, description):
-        experiment = Experiment(self, name, description)
+        experiment = Experiment(name, description, self.datetime_provider)
         self.add(experiment)
         return experiment
 
@@ -291,7 +317,7 @@ class Fridge(object):
             raise FridgeError('Already initialized.')
         os.mkdir(fridge_path)
         engine = create_engine(cls.path_to_db_file(path))
-        Base.metadata.create_all(engine)
+        InFridgeBase.metadata.create_all(engine)
 
     @classmethod
     def path_to_db_file(cls, basepath):

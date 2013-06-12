@@ -57,8 +57,11 @@ class FileWithContent(BaseMatcher):
 
     def _matches(self, item):
         try:
-            with open(item, 'rb') as f:
-                return self.content_matcher.matches(f.read())
+            if hasattr(item, 'read'):
+                return self.content_matcher.matches(item.read())
+            else:
+                with open(item, 'rb') as f:
+                    return self.content_matcher.matches(f.read())
         except:
             return False
 
