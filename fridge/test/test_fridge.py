@@ -293,6 +293,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
                 file.write(b'somecontent')
 
         trial = self.run_new_trial_and_reopen_fridge(gen_output)
+        print(trial.outputs[0].filename, trial.outputs[0].size)
         assert_that(trial.outputs, has_item(class_with(
             filename='file.txt', size=11,
             hash=hashlib.sha1(b'somecontent').digest())))
@@ -307,6 +308,24 @@ class TestFridgeTrialsApi(FrigdeFixture):
             self.fridge.path, self.fridge.config.data_path,
             self.experiment.name, 'file.txt')
         assert_that(outfile, is_(file_with_content(equal_to(b'somecontent'))))
+
+    def test_can_add_additional_file(self):
+        fd, filename = tempfile.mkstemp()
+        try:
+            os.write(fd, b'somecontent')
+            trial = self.experiment.create_trial()
+            trial.add_file('output', filename)
+        finally:
+            os.close(fd)
+            os.unlink(filename)
+
+        trial.run(lambda workpath: None)
+        trial_id = trial.id
+        self.reopen_fridge()
+        trial = self.fridge.trials.get(trial_id)
+        assert_that(trial.outputs, has_item(class_with(
+            filename=filename, size=11,
+            hash=hashlib.sha1(b'somecontent').digest())))
 
 
     # TODO store input files

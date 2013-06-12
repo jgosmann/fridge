@@ -200,12 +200,14 @@ class Trial(Base):
 
     def _record_output_files(self):
         for dirpath, dirnames, filenames in os.walk(self.workpath):
-            filepath = dirpath[len(self.workpath):]
             for filename in filenames:
-                self._add_file('output', os.path.join(filepath, filename))
+                self.add_file('output', os.path.join(dirpath, filename))
 
-    def _add_file(self, type, filename):
-        path = os.path.join(self.workpath, filename)
+    def add_file(self, type, path):
+        if path.startswith(self.workpath):
+            filename = os.path.relpath(path, self.workpath)
+        else:
+            filename = path
         size = os.path.getsize(path)
         sha1 = sha1sum(path)
         self.files.append(File(type, filename, size, sha1))
