@@ -2,8 +2,10 @@ from datetime import datetime
 from fridge import Fridge, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
-    contains_inanyorder, contains_string, ends_with, equal_to, has_entry, \
+    contains_inanyorder, contains_string, equal_to, has_entry, \
     has_item, has_string, instance_of, is_
+from hamcrest.library.text.stringcontainsinorder import \
+    string_contains_in_order
 from matchers import class_with
 from nose.tools import raises
 import hashlib
@@ -130,8 +132,11 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     def test_calls_function_with_args(self):
         args = [4, 'xyz']
-        outpath = ends_with(os.path.join(
-            self.fridge.config.data_path, self.experiment.name))
+        trial = self.experiment.create_trial()
+        self.fridge.commit()
+        outpath = string_contains_in_order(
+            os.path.join(self.fridge.path, self.fridge.DIRNAME),
+            str(trial.id))
         expected_args = args + [outpath]
         called = False
 
@@ -140,7 +145,6 @@ class TestFridgeTrialsApi(FrigdeFixture):
             called = True
             assert_that(args, contains(*expected_args))
 
-        trial = self.experiment.create_trial()
         trial.run(task, *args)
         assert_that(called, is_(True))
 

@@ -213,9 +213,11 @@ class Trial(Base):
             self.reason)
 
     def get_outpath(self):
+        if self.id is None:
+            self.fridge.commit()
         return os.path.join(
-            self.fridge.path, self.fridge.config.data_path,
-            self.experiment.name)
+            self.fridge.path, self.fridge.DIRNAME, self.fridge.WORKDIR,
+            self.experiment.name, str(self.id))
 
     outpath = property(get_outpath)
 
@@ -228,6 +230,7 @@ class StaticConfig(object):
 class Fridge(object):
     DIRNAME = '.fridge'
     DBNAME = 'fridge.db'
+    WORKDIR = 'work'
 
     def __init__(self, path):
         self.path = path
