@@ -67,7 +67,7 @@ class File(InFridgeBase):
     __tablename__ = 'files'
 
     id = Column(Integer, Sequence('files_id_seq'), primary_key=True)
-    type = Column(Enum('output'), nullable=False)
+    type = Column(Enum('input', 'output'), nullable=False)
     filename = Column(String(), nullable=False)
     size = Column(Integer, nullable=False)
     hash = Column(BINARY(160 / 8), nullable=False)
@@ -164,6 +164,10 @@ class Trial(InFridgeBase):
     def outputs(self):
         return self.files.filter(File.type == 'output')
 
+    @hybrid_property
+    def inputs(self):
+        return self.files.filter(File.type == 'input')
+
     experiment = relationship(
         'Experiment', backref=backref('trials', order_by=id))
 
@@ -173,10 +177,10 @@ class Trial(InFridgeBase):
     def run(self, fn, *args):
         self.check_run_preconditions()
 
-        args = list(args) + [self.workpath]
-
         self._record_start_time()
         self._record_revisions()
+        self._record_input_files(*args)
+        args = list(args) + [self.workpath]
         self._record_arguments(*args)
         self.fridge.commit()
 
@@ -205,6 +209,19 @@ class Trial(InFridgeBase):
                 if os.path.isdir(path) and GitRepo.isrepo(path):
                     yield p
 
+    def _record_input_files(self, *args):
+        for arg in args:
+            if os.path.exists(str(arg)):
+                self._record_files('input', arg)
+
+    def _record_files(self, type, path):
+        if os.path.isfile(path):
+            self.add_file(type, path)
+        else:
+            for dirpath, dirnames, filenames in os.walk(path):
+                for filename in filenames:
+                    self.add_file('output', os.path.join(dirpath, filename))
+
     def _record_arguments(self, *args):
         for arg in args:
             paramObj = ParameterObject(arg)
@@ -224,9 +241,7 @@ class Trial(InFridgeBase):
         self.end = self.fridge.datetime_provider.now()
 
     def _record_output_files(self):
-        for dirpath, dirnames, filenames in os.walk(self.workpath):
-            for filename in filenames:
-                self.add_file('output', os.path.join(dirpath, filename))
+        self._record_files('output', self.workpath)
 
     def add_file(self, type, path):
         if path.startswith(self.workpath):
