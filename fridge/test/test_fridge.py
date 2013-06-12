@@ -8,9 +8,11 @@ from hamcrest.library.text.stringcontainsinorder import \
     string_contains_in_order
 from matchers import class_with, file_with_content
 from nose.tools import raises
+from unittest.mock import patch
 import hashlib
 import os.path
 import shutil
+import sys
 import tempfile
 import warnings
 
@@ -367,6 +369,25 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename=filename, size=11,
             hash=hashlib.sha1(b'somecontent').digest())))
 
-    # TODO store stdout, stderr
+    def test_captures_stdout(self):
+        def write_to_stdout(*args):
+            sys.stdout.write('somecontent')
+
+        with patch('sys.stdout'):
+            trial = self.run_new_trial_and_reopen_fridge(write_to_stdout)
+        assert_that(trial.outputs, has_item(class_with(
+            filename='stdout.txt', size=11,
+            hash=hashlib.sha1('somecontent'.encode('utf-8')).digest())))
+
+    def test_captures_stderr(self):
+        def write_to_stderr(*args):
+            sys.stderr.write('somecontent')
+
+        with patch('sys.stderr'):
+            trial = self.run_new_trial_and_reopen_fridge(write_to_stderr)
+        assert_that(trial.outputs, has_item(class_with(
+            filename='stderr.txt', size=11,
+            hash=hashlib.sha1('somecontent'.encode('utf-8')).digest())))
+
     # TODO ability to add outcome information
     # TODO make config value accessible

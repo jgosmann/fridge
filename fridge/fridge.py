@@ -6,8 +6,9 @@ from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
-from .vcs import GitRepo
+from .iocapture import CaptureStdout, CaptureStderr
 from .lazyPickle import lazify
+from .vcs import GitRepo
 import binascii
 import hashlib
 import os
@@ -185,7 +186,12 @@ class Trial(InFridgeBase):
         self.fridge.commit()
 
         self._prepare_run()
-        fn(*args)
+        stdout_filename = os.path.join(self.workpath, 'stdout.txt')
+        stderr_filename = os.path.join(self.workpath, 'stderr.txt')
+        with open(stdout_filename, 'w') as stdout_file, \
+                open(stderr_filename, 'w') as stderr_file, \
+                CaptureStdout(stdout_file), CaptureStderr(stderr_file):
+            fn(*args)
 
         self._record_end_time()
         self._record_output_files()
