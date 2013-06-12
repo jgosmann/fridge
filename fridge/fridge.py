@@ -157,6 +157,7 @@ class Trial(InFridgeBase):
 
     id = Column(Integer, Sequence('trial_id_seq'), primary_key=True)
     reason = Column(Text, nullable=False, default='')
+    outcome = Column(Text, nullable=False, default='')
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
     experiment_name = Column(String(128), ForeignKey('experiments.name'))

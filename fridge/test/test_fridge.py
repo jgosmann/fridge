@@ -389,5 +389,15 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename='stderr.txt', size=11,
             hash=hashlib.sha1('somecontent'.encode('utf-8')).digest())))
 
-    # TODO ability to add outcome information
+    def test_stores_outcome_information(self):
+        trial = self.run_new_trial_and_reopen_fridge(lambda *args: None)
+        outcome = 'This is some text describing the outcome.'
+        trial.outcome = outcome
+
+        trial_id = trial.id
+        self.reopen_fridge()
+        trial = self.fridge.trials.get(trial_id)
+
+        assert_that(trial.outcome, is_(equal_to(outcome)))
+
     # TODO make config value accessible
