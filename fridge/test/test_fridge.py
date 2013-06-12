@@ -202,19 +202,28 @@ class TestFridgeTrialsApi(FrigdeFixture):
         return self.fridge.trials.get(trial_id)
 
 
+    def test_records_called_function_name(self):
+        def task_fn(*args):
+            pass
+
+        trial = self.run_new_trial_and_reopen_fridge(task_fn)
+        assert_that(
+            trial.arguments[0].value.retrieve(), is_(equal_to('task_fn()')))
+
     def test_records_run_arguments_representation(self):
         args = (42, 'some text', Pickleable(0))
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, y, z, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
-                *[class_with(repr=repr(a)) for a in args] + [anything()]))))
+            *[anything()] + [class_with(repr=repr(a)) for a in args] +
+            [anything()]))))
 
     def test_records_run_arguments_objects(self):
         args = [42, 'some text', Pickleable(0)]
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, y, z, workpath: None, *args)
         stored_args = (a.value.retrieve() for a in trial.arguments)
-        assert_that(stored_args, contains(*args + [anything()]))
+        assert_that(stored_args, contains(*[anything()] + args + [anything()]))
 
     def test_records_run_argument_without_object_if_pickling_fails(self):
         unpickleable = lambda: None
@@ -222,7 +231,8 @@ class TestFridgeTrialsApi(FrigdeFixture):
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
-            *[class_with(repr=repr(a), value=None) for a in args] +
+            *[anything()] +
+            [class_with(repr=repr(a), value=None) for a in args] +
             [anything()]))))
 
     def test_issues_warning_if_pickling_of_argument_fails(self):
@@ -246,7 +256,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         try:
             assert_that(self.fridge.trials, has_item(class_with(
                 arguments=contains(
-                    *[class_with(repr=repr(a)) for a in args] +
+                    *[anything()] + [class_with(repr=repr(a)) for a in args] +
                     [anything()]))))
         finally:
             Pickleable = orig_class
@@ -261,7 +271,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         orig_class = Pickleable
         Pickleable = None
         try:
-            trial.arguments[0].value.retrieve()
+            trial.arguments[1].value.retrieve()
         finally:
             Pickleable = orig_class
 
@@ -276,7 +286,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         Pickleable = None
         try:
             assert_that(
-                trial.arguments[0].value['accessible'].retrieve(), is_(42))
+                trial.arguments[1].value['accessible'].retrieve(), is_(42))
         finally:
             Pickleable = orig_class
 
@@ -357,7 +367,6 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename=filename, size=11,
             hash=hashlib.sha1(b'somecontent').digest())))
 
-    # TODO ability to add outcome information
-    # TODO store function name
     # TODO store stdout, stderr
+    # TODO ability to add outcome information
     # TODO make config value accessible

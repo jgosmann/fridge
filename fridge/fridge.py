@@ -181,7 +181,7 @@ class Trial(InFridgeBase):
         self._record_revisions()
         self._record_input_files(*args)
         args = list(args) + [self.workpath]
-        self._record_arguments(*args)
+        self._record_arguments(*[fn.__name__ + '()'] + args)
         self.fridge.commit()
 
         self._prepare_run()
