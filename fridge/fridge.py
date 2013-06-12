@@ -63,16 +63,16 @@ class File(Base):
     type = Column(Enum('output'), nullable=False)
     filename = Column(String(), nullable=False)
     size = Column(Integer, nullable=False)
-    sha1 = Column(BINARY(160 / 8), nullable=False)
+    hash = Column(BINARY(160 / 8), nullable=False)
     trial_id = Column(Integer, ForeignKey('trials.id'))
 
     trial = relationship('Trial', backref=backref('files', lazy='dynamic'))
 
-    def __init__(self, type, filename, size, sha1):
+    def __init__(self, type, filename, size, hash):
         self.type = type
         self.filename = filename
         self.size = size
-        self.sha1 = sha1
+        self.hash = hash
 
 
 class ParameterObject(Base):

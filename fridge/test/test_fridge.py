@@ -295,7 +295,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         trial = self.run_new_trial_and_reopen_fridge(gen_output)
         assert_that(trial.outputs, has_item(class_with(
             filename='file.txt', size=11,
-            sha1=hashlib.sha1(b'somecontent').digest())))
+            hash=hashlib.sha1(b'somecontent').digest())))
 
     def test_moves_output_files_to_final_location(self):
         def gen_output(workpath):
@@ -309,7 +309,6 @@ class TestFridgeTrialsApi(FrigdeFixture):
         assert_that(outfile, is_(file_with_content(equal_to(b'somecontent'))))
 
 
-    # FIXME rename sha1 to hash
     # TODO do not use final outpath during simulation, locking before copying
     # TODO ability to add outcome information
     # TODO store function name
