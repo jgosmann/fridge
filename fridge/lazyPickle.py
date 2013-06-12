@@ -6,9 +6,15 @@ except:
 
 
 class _LazyPickle(object):
-    def __init__(self, obj):
+    def __init__(self, obj, onerror=None):
         self.repr = repr(obj)
-        self.pickle = pickle.dumps(obj)
+        try:
+            self.pickle = pickle.dumps(obj)
+        except Exception as err:
+            if not onerror is None:
+                self.pickle = onerror(err)
+            else:
+                raise err
 
     def __repr__(self):
         return self.repr
@@ -18,10 +24,10 @@ class _LazyPickle(object):
 
 
 class _LazyPickleMapping(Mapping):
-    def __init__(self, mapping):
+    def __init__(self, mapping, onerror=None):
         self._proxy = {}
         for k, v in mapping.items():
-            self._proxy[k] = lazify(v)
+            self._proxy[k] = lazify(v, onerror)
 
     def __getitem__(self, key):
         return self._proxy[key]
@@ -45,8 +51,8 @@ class _LazyPickleMapping(Mapping):
         return repr(self._proxy)
 
 
-def lazify(obj):
+def lazify(obj, onerror=None):
     if isinstance(obj, Mapping):
-        return _LazyPickleMapping(obj)
+        return _LazyPickleMapping(obj, onerror)
     else:
-        return _LazyPickle(obj)
+        return _LazyPickle(obj, onerror)

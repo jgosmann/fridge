@@ -1,6 +1,8 @@
-from hamcrest import assert_that, equal_to, has_entries, is_
+from hamcrest import assert_that, contains, equal_to, has_entries, \
+    instance_of, is_
 from nose.tools import raises
 from fridge.lazyPickle import lazify
+from unittest.mock import MagicMock
 try:
     import cPickle as pickle
 except:
@@ -81,3 +83,27 @@ class TestLazyPickles(object):
             assert_that(repr(restored), is_(repr(obj)))
         finally:
             Pickleable = orig_class
+
+    @raises(pickle.PicklingError)
+    def test_raises_exception_on_failed_pickling(self):
+        obj = {'a': 42, 'b': lambda: None, 'c': 23}
+        lazify(obj)
+
+    def test_if_own_error_handler_provided_it_is_used_instead_of_exception(
+            self):
+        onerror = MagicMock()
+        obj = {'a': 42, 'b': lambda: None, 'c': 23}
+        lazify(obj, onerror)
+        assert_that(len(onerror.call_args_list), is_(1))
+        assert_that(
+            onerror.call_args_list[0][0],
+            contains(instance_of(pickle.PicklingError)))
+
+    def test_if_own_error_handler_its_return_value_is_used(self):
+        onerror = MagicMock()
+        onerror.return_value = 'pickling failed'
+        obj = {'a': 42, 'b': lambda: None, 'c': 23}
+        lazified = lazify(obj, onerror)
+        assert_that(lazified['a'].retrieve(), is_(42))
+        assert_that(lazified['b'].pickle, is_(equal_to(onerror.return_value)))
+        assert_that(lazified['c'].retrieve(), is_(23))
