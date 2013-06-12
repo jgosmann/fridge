@@ -7,9 +7,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from .vcs import GitRepo
 from .lazyPickle import lazify
+import binascii
 import hashlib
 import os
 import os.path
+import shutil
 import warnings
 try:
     import cPickle as pickle
@@ -146,7 +148,7 @@ class Trial(Base):
     def run(self, fn, *args):
         self.check_run_preconditions()
 
-        args = list(args) + [self.outpath]
+        args = list(args) + [self.workpath]
 
         self._record_start_time()
         self._record_revisions()
@@ -159,6 +161,7 @@ class Trial(Base):
         self._record_end_time()
         self._record_output_files()
         self.fridge.commit()
+        self._move_data_to_final_location()
 
     def check_run_preconditions(self):
         for p in self._get_repo_rel_paths():
@@ -166,7 +169,7 @@ class Trial(Base):
                 raise FridgeError('Repository %s is dirty.' % p)
 
     def _prepare_run(self):
-        os.makedirs(self.outpath, exist_ok=True)
+        os.makedirs(self.workpath, exist_ok=True)
 
     def _get_repo_rel_paths(self):
         if GitRepo.isrepo(os.path.join(self.fridge.path, '.')):
@@ -196,30 +199,50 @@ class Trial(Base):
         self.end = self.fridge.datetime_provider.now()
 
     def _record_output_files(self):
-        for dirpath, dirnames, filenames in os.walk(self.outpath):
-            filepath = dirpath[len(self.outpath):]
+        for dirpath, dirnames, filenames in os.walk(self.workpath):
+            filepath = dirpath[len(self.workpath):]
             for filename in filenames:
                 self._add_file('output', os.path.join(filepath, filename))
 
     def _add_file(self, type, filename):
-        path = os.path.join(self.outpath, filename)
+        path = os.path.join(self.workpath, filename)
         size = os.path.getsize(path)
         sha1 = sha1sum(path)
         self.files.append(File(type, filename, size, sha1))
+
+        sha1hex = binascii.hexlify(sha1).decode()
+        destdir = os.path.join(
+            self.fridge.blobpath, sha1hex[0:3], sha1hex[3:6])
+        destfilepath = os.path.join(destdir, sha1hex)
+        if not os.path.exists(destfilepath):
+            os.makedirs(destdir, exist_ok=True)
+            shutil.copy2(path, destfilepath)
+
+    def _move_data_to_final_location(self):
+        os.makedirs(self.datapath, exist_ok=True)
+        for item in os.listdir(self.workpath):
+            os.rename(
+                os.path.join(self.workpath, item),
+                os.path.join(self.datapath, item))
+        os.rmdir(self.workpath)
 
     def __repr__(self):
         return '<trial %i in experiment %s, start %s, end %s, reason: %s>' % (
             self.id, self.experiment_name, str(self.start), str(self.end),
             self.reason)
 
-    def get_outpath(self):
+    def get_workpath(self):
         if self.id is None:
             self.fridge.commit()
         return os.path.join(
             self.fridge.path, self.fridge.DIRNAME, self.fridge.WORKDIR,
             self.experiment.name, str(self.id))
 
-    outpath = property(get_outpath)
+    def get_outpath(self):
+        return os.path.join(self.fridge.datapath, self.experiment.name)
+
+    workpath = property(get_workpath)
+    datapath = property(get_outpath)
 
 
 class StaticConfig(object):
@@ -269,6 +292,15 @@ class Fridge(object):
     @classmethod
     def path_to_db_file(cls, basepath):
         return 'sqlite:///' + os.path.join(basepath, cls.DIRNAME, cls.DBNAME)
+
+    def get_blobpath(self):
+        return os.path.join(self.path, self.DIRNAME, 'blobs')
+
+    def get_datapath(self):
+        return os.path.join(self.path, self.config.data_path)
+
+    blobpath = property(get_blobpath)
+    datapath = property(get_datapath)
 
 
 class FridgeError(Exception):

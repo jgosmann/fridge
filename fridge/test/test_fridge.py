@@ -6,7 +6,7 @@ from hamcrest import all_of, anything, assert_that, contains, \
     has_item, has_string, instance_of, is_
 from hamcrest.library.text.stringcontainsinorder import \
     string_contains_in_order
-from matchers import class_with
+from matchers import class_with, file_with_content
 from nose.tools import raises
 import hashlib
 import os.path
@@ -110,7 +110,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         reason = 'For testing.'
         trial = self.experiment.create_trial()
         trial.reason = reason
-        trial.run(lambda outpath: None)
+        trial.run(lambda workpath: None)
 
         self.reopen_fridge()
         assert_that(self.fridge.trials, has_item(class_with(reason=reason)))
@@ -120,7 +120,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         timestamp_end = 160
         trial = self.experiment.create_trial()
 
-        def task(outpath):
+        def task(workpath):
             self.datetime_provider.timestamp = timestamp_end
 
         self.datetime_provider.timestamp = timestamp_start
@@ -134,10 +134,10 @@ class TestFridgeTrialsApi(FrigdeFixture):
         args = [4, 'xyz']
         trial = self.experiment.create_trial()
         self.fridge.commit()
-        outpath = string_contains_in_order(
+        workpath = string_contains_in_order(
             os.path.join(self.fridge.path, self.fridge.DIRNAME),
             str(trial.id))
-        expected_args = args + [outpath]
+        expected_args = args + [workpath]
         called = False
 
         def task(*args):
@@ -152,7 +152,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         repos = [(p, self.create_git_repo_with_dummy_commit(
             os.path.join(self.fridge_path, p))) for p in ['repoA', 'repoB']]
         trial = self.experiment.create_trial()
-        trial.run(lambda outpath: None)
+        trial.run(lambda workpath: None)
         trial_id = trial.id
         self.reopen_fridge()
 
@@ -164,7 +164,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
     def test_stores_git_sourcecode_revision_for_single_root_repo(self):
         repo = self.create_git_repo_with_dummy_commit(self.fridge_path)
         trial = self.experiment.create_trial()
-        trial.run(lambda outpath: None)
+        trial.run(lambda workpath: None)
         trial_id = trial.id
         self.reopen_fridge()
 
@@ -205,14 +205,14 @@ class TestFridgeTrialsApi(FrigdeFixture):
     def test_records_run_arguments_representation(self):
         args = (42, 'some text', Pickleable(0))
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, y, z, outpath: None, *args)
+            lambda x, y, z, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
                 *[class_with(repr=repr(a)) for a in args] + [anything()]))))
 
     def test_records_run_arguments_objects(self):
         args = [42, 'some text', Pickleable(0)]
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, y, z, outpath: None, *args)
+            lambda x, y, z, workpath: None, *args)
         stored_args = (a.value.retrieve() for a in trial.arguments)
         assert_that(stored_args, contains(*args + [anything()]))
 
@@ -220,7 +220,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         unpickleable = lambda: None
         args = (unpickleable,)
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, outpath: None, *args)
+            lambda x, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
             *[class_with(repr=repr(a), value=None) for a in args] +
             [anything()]))))
@@ -230,7 +230,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         args = (unpickleable,)
         trial = self.experiment.create_trial()
         with warnings.catch_warnings(record=True) as w:
-            trial.run(lambda x, outpath: None, *args)
+            trial.run(lambda x, workpath: None, *args)
             assert_that(w, has_item(class_with(message=all_of(
                 instance_of(RuntimeWarning),
                 has_string(contains_string('pickle'))))))
@@ -238,7 +238,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
         args = (Pickleable(0),)
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, outpath: None, *args)
+            lambda x, workpath: None, *args)
 
         global Pickleable
         orig_class = Pickleable
@@ -255,7 +255,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
     def test_raises_exception_on_parameter_access_if_unpickling_fails(self):
         args = (Pickleable(0),)
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, outpath: None, *args)
+            lambda x, workpath: None, *args)
 
         global Pickleable
         orig_class = Pickleable
@@ -269,7 +269,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
             self):
         args = ({'accessible': 42, 'not accessible': Pickleable(0)},)
         trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, outpath: None, *args)
+            lambda x, workpath: None, *args)
 
         global Pickleable
         orig_class = Pickleable
@@ -280,16 +280,16 @@ class TestFridgeTrialsApi(FrigdeFixture):
         finally:
             Pickleable = orig_class
 
-    def test_outpath_exists_while_running_trial(self):
-        def check_path(outpath):
-            assert_that(os.path.isdir(outpath), is_(True))
+    def test_workpath_exists_while_running_trial(self):
+        def check_path(workpath):
+            assert_that(os.path.isdir(workpath), is_(True))
 
         trial = self.experiment.create_trial()
         trial.run(check_path)
 
     def test_records_information_about_written_files(self):
-        def gen_output(outpath):
-            with open(os.path.join(outpath, 'file.txt'), 'wb') as file:
+        def gen_output(workpath):
+            with open(os.path.join(workpath, 'file.txt'), 'wb') as file:
                 file.write(b'somecontent')
 
         trial = self.run_new_trial_and_reopen_fridge(gen_output)
@@ -297,7 +297,19 @@ class TestFridgeTrialsApi(FrigdeFixture):
             filename='file.txt', size=11,
             sha1=hashlib.sha1(b'somecontent').digest())))
 
-    # FIXME creation of Data in execution directory
+    def test_moves_output_files_to_final_location(self):
+        def gen_output(workpath):
+            with open(os.path.join(workpath, 'file.txt'), 'wb') as file:
+                file.write(b'somecontent')
+
+        trial = self.run_new_trial_and_reopen_fridge(gen_output)
+        outfile = os.path.join(
+            self.fridge.path, self.fridge.config.data_path,
+            self.experiment.name, 'file.txt')
+        assert_that(outfile, is_(file_with_content(equal_to(b'somecontent'))))
+
+
+    # FIXME rename sha1 to hash
     # TODO do not use final outpath during simulation, locking before copying
     # TODO ability to add outcome information
     # TODO store function name

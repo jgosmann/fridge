@@ -48,9 +48,32 @@ class Empty(BaseMatcher):
         description.append_text('empty')
 
 
+class FileWithContent(BaseMatcher):
+    def __init__(self, content_matcher):
+        if hasattr(content_matcher, 'matches'):
+            self.content_matcher = content_matcher
+        else:
+            self.content_matcher = equal_to(content_matcher)
+
+    def _matches(self, item):
+        try:
+            with open(item, 'rb') as f:
+                return self.content_matcher.matches(f.read())
+        except:
+            return False
+
+    def describe_to(self, description):
+        description.append_text('file with content matching ')
+        self.content_matcher.describe_to(description)
+
+
 def class_with(**attributes_to_match):
     return ClassWith(**attributes_to_match)
 
 
 def empty():
     return Empty()
+
+
+def file_with_content(content):
+    return FileWithContent(content)
