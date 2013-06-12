@@ -124,13 +124,23 @@ class ParameterObject(InFridgeBase):
                 'Cannot pickle object. Only the string representation was ' +
                 'stored.'))
 
+    @staticmethod
+    def _handle_lazify_error(err):
+        if isinstance(err, pickle.PicklingError):
+            warnings.warn(RuntimeWarning(
+                'Cannot pickle object. Only the string representation was ' +
+                'stored.'))
+            return None
+        else:
+            raise err
+
     def get_value(self):
         if self._pickle is None:
             return None
         return self._pickle
 
     def set_value(self, value):
-        self._pickle = lazify(value)
+        self._pickle = lazify(value, self._handle_lazify_error)
 
     value = property(get_value, set_value)
 
@@ -251,6 +261,20 @@ class Trial(InFridgeBase):
     def _record_output_files(self):
         self._record_files('output', self.workpath)
 
+    # FIXME some refactoring is needed:
+    # - we have to identical _handle_lazify_error functions
+    # - some parts of add_file might be better included in the File class
+    # - parse functionality should be extracted from this class
+    @staticmethod
+    def _handle_lazify_error(err):
+        if isinstance(err, pickle.PicklingError):
+            warnings.warn(RuntimeWarning(
+                'Cannot pickle object. Only the string representation was ' +
+                'stored.'))
+            return None
+        else:
+            raise err
+
     def add_file(self, type, path):
         if path.startswith(self.workpath):
             filename = os.path.relpath(path, self.workpath)
@@ -261,7 +285,7 @@ class Trial(InFridgeBase):
         file = File(type, filename, size, sha1)
         parsed = self._parse(path)
         if parsed is not None:
-            file.parsed = lazify(parsed)
+            file.parsed = lazify(parsed, self._handle_lazify_error)
         self.files.append(file)
 
         if not os.path.exists(file._dir):

@@ -233,8 +233,8 @@ class TestFridgeTrialsApi(FrigdeFixture):
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
-            *[anything()] +
-            [class_with(repr=repr(a), value=None) for a in args] +
+            *[anything()] + [class_with(
+                repr=repr(a), value=class_with(pickle=None)) for a in args] +
             [anything()]))))
 
     def test_issues_warning_if_pickling_of_argument_fails(self):
@@ -417,3 +417,16 @@ class TestFridgeTrialsApi(FrigdeFixture):
         assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
 
     # TODO parsing file with unpickleable
+    def test_issues_warning_if_pickling_of_parsed_config_item_fails(self):
+        fd, filename = tempfile.mkstemp('.py')
+        try:
+            os.write(fd, b'unpickleable = lambda: None')
+            trial = self.experiment.create_trial()
+            with warnings.catch_warnings(record=True) as w:
+                trial.run(lambda *args: None, filename)
+                assert_that(w, has_item(class_with(message=all_of(
+                    instance_of(RuntimeWarning),
+                    has_string(contains_string('pickle'))))))
+        finally:
+            os.close(fd)
+            os.unlink(filename)
