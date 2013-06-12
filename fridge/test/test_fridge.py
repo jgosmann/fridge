@@ -400,4 +400,20 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
         assert_that(trial.outcome, is_(equal_to(outcome)))
 
-    # TODO make config value accessible
+    def test_stores_parsed_input_files(self):
+        fd, filename = tempfile.mkstemp('.py')
+        try:
+            os.write(fd, b'somevar = 42')
+            trial = self.experiment.create_trial()
+            trial.run(lambda *args: None, filename)
+        finally:
+            os.close(fd)
+            os.unlink(filename)
+
+        trial_id = trial.id
+        self.reopen_fridge()
+        trial = self.fridge.trials.get(trial_id)
+
+        assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
+
+    # TODO parsing file with unpickleable

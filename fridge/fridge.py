@@ -72,6 +72,7 @@ class File(InFridgeBase):
     filename = Column(String(), nullable=False)
     size = Column(Integer, nullable=False)
     hash = Column(BINARY(160 / 8), nullable=False)
+    parsed = Column(PickleType, nullable=True)
     trial_id = Column(Integer, ForeignKey('trials.id'))
 
     trial = relationship('Trial', backref=backref('files', lazy='dynamic'))
@@ -258,11 +259,24 @@ class Trial(InFridgeBase):
         size = os.path.getsize(path)
         sha1 = sha1sum(path)
         file = File(type, filename, size, sha1)
+        parsed = self._parse(path)
+        if parsed is not None:
+            file.parsed = lazify(parsed)
         self.files.append(file)
 
         if not os.path.exists(file._dir):
             os.makedirs(file._dir, exist_ok=True)
             shutil.copy2(path, file._filepath)
+
+    def _parse(self, path):
+        if path.endswith('.py'):
+            entries = {}
+            with open(path, 'r') as source:
+                compiled = compile(source.read(), path, 'exec')
+                exec(compiled, entries)
+            del entries['__builtins__']
+            return entries
+        return None
 
     def _move_data_to_final_location(self):
         # FIXME this function will need some kind of locking when it should
