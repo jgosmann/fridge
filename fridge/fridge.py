@@ -6,6 +6,7 @@ from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from weakref import WeakKeyDictionary
 from .iocapture import CaptureStdout, CaptureStderr
 from .lazyPickle import lazify
 from .vcs import GitRepo
@@ -341,14 +342,13 @@ class Fridge(object):
     DBNAME = 'fridge.db'
     WORKDIR = 'work'
 
-    session_to_fridge = {}
+    session_to_fridge = WeakKeyDictionary()
 
     def __init__(self, path):
         self.path = path
         self.engine = create_engine(self.path_to_db_file(path))
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
-        # FIXME use weak ref
         self.session_to_fridge[self.session] = self
         self.experiments = self.session.query(Experiment)
         self.trials = self.session.query(Trial)
