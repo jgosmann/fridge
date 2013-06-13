@@ -1,5 +1,5 @@
 from datetime import datetime
-from fridge import Fridge, FridgeError
+from fridge.api import Fridge, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
     contains_inanyorder, contains_string, equal_to, has_entry, \

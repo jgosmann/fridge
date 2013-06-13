@@ -1,5 +1,5 @@
 from fridge.cli import FridgeCli
-from fridge import Fridge
+from fridge.api import Fridge
 import os
 import shutil
 import tempfile

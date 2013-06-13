@@ -1,7 +1,6 @@
-from fridge import Fridge
+from .api import Fridge
 import argparse
 import os
-import sys
 
 
 class FridgeCli(object):
