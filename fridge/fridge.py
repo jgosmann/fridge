@@ -346,7 +346,9 @@ class Fridge(object):
 
     def __init__(self, path):
         self.path = path
-        self.engine = create_engine(self.path_to_db_file(path))
+        if not os.path.exists(self.path_to_db_file(path)):
+            raise FridgeError('Not an initialized fridge directory.')
+        self.engine = create_engine('sqlite:///' + self.path_to_db_file(path))
         self.Session = sessionmaker(bind=self.engine)
         self.session = self.Session()
         self.session_to_fridge[self.session] = self
@@ -376,12 +378,13 @@ class Fridge(object):
         if os.path.exists(fridge_path):
             raise FridgeError('Already initialized.')
         os.mkdir(fridge_path)
-        engine = create_engine(cls.path_to_db_file(path))
+        engine = create_engine('sqlite:///' + cls.path_to_db_file(path))
         InFridgeBase.metadata.create_all(engine)
 
+    # FIXME refactor to property
     @classmethod
     def path_to_db_file(cls, basepath):
-        return 'sqlite:///' + os.path.join(basepath, cls.DIRNAME, cls.DBNAME)
+        return os.path.join(basepath, cls.DIRNAME, cls.DBNAME)
 
     def get_blobpath(self):
         return os.path.join(self.path, self.DIRNAME, 'blobs')

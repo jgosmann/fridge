@@ -63,8 +63,19 @@ class TestFridgeInitApi(object):
     @raises(FridgeError)
     def test_raises_exception_when_already_initialized(self):
         fridge_path = tempfile.mkdtemp()
-        Fridge.init_dir(fridge_path)
-        Fridge.init_dir(fridge_path)
+        try:
+            Fridge.init_dir(fridge_path)
+            Fridge.init_dir(fridge_path)
+        finally:
+            shutil.rmtree(fridge_path)
+
+    @raises(FridgeError)
+    def test_raises_exception_when_opening_uninitialized_dir(self):
+        fridge_path = tempfile.mkdtemp()
+        try:
+            Fridge(fridge_path)
+        finally:
+            shutil.rmtree(fridge_path)
 
 
 class TestFridgeExperimentApi(FrigdeFixture):
