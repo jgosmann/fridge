@@ -173,6 +173,9 @@ class Trial(InFridgeBase):
     outcome = Column(Text, nullable=False, default='')
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
+    type = Column(
+        Enum('notrun', 'python-function', 'external'), default='notrun',
+        nullable=False)
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
 
     @hybrid_property
@@ -191,6 +194,7 @@ class Trial(InFridgeBase):
 
     # TODO test and refactor (code duplication with run)
     def run_external(self, *args):
+        self.type = 'external'
         self.check_run_preconditions()
 
         self._record_start_time()
@@ -214,6 +218,7 @@ class Trial(InFridgeBase):
         self._move_data_to_final_location()
 
     def run(self, fn, *args):
+        self.type = 'python-function'
         self.check_run_preconditions()
 
         self._record_start_time()

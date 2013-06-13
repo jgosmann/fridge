@@ -128,6 +128,15 @@ class TestFridgeTrialsApi(FrigdeFixture):
         self.reopen_fridge()
         assert_that(self.fridge.trials, has_item(class_with(reason=reason)))
 
+    def test_stores_trial_with_type(self):
+        trial = self.experiment.create_trial()
+        trial.run(lambda workpath: None)
+
+        self.reopen_fridge()
+        # FIXME cast to list in all test as this gives better output.
+        assert_that(list(self.fridge.trials), has_item(class_with(
+            type='python-function')))
+
     def test_records_execution_time(self):
         timestamp_start = 90
         timestamp_end = 160
@@ -441,3 +450,5 @@ class TestFridgeTrialsApi(FrigdeFixture):
         finally:
             os.close(fd)
             os.unlink(filename)
+
+    # FIXME raise exception when trying to run an already run trial
