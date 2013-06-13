@@ -15,6 +15,7 @@ import hashlib
 import os
 import os.path
 import shutil
+import subprocess
 import warnings
 try:
     import cPickle as pickle
@@ -187,6 +188,30 @@ class Trial(InFridgeBase):
 
     def __init__(self, experiment):
         self.experiment = experiment
+
+    # TODO test and refactor (code duplication with run)
+    def run_external(self, *args):
+        self.check_run_preconditions()
+
+        self._record_start_time()
+        self._record_revisions()
+        self._record_input_files(*args[1:])
+        args = list(args) + [self.workpath]
+        self._record_arguments(*args)
+        self.fridge.commit()
+
+        self._prepare_run()
+        stdout_filename = os.path.join(self.workpath, 'stdout.txt')
+        stderr_filename = os.path.join(self.workpath, 'stderr.txt')
+        with open(stdout_filename, 'w') as stdout_file, \
+                open(stderr_filename, 'w') as stderr_file, \
+                CaptureStdout(stdout_file), CaptureStderr(stderr_file):
+            subprocess.call(args)
+
+        self._record_end_time()
+        self._record_output_files()
+        self.fridge.commit()
+        self._move_data_to_final_location()
 
     def run(self, fn, *args):
         self.check_run_preconditions()

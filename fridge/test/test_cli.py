@@ -46,8 +46,24 @@ class TestCli(object):
         assert_that(fridge.experiments, has_item(class_with(
             name=expname, description=desc)))
 
-    # TODO empty editor
+    def test_allows_to_run_trial_and_stores_information(self):
+        def mock_editor(args):
+            with open(args[1], 'w') as file:
+                file.write('reason')
+            return 0
+
+        self.cli.call.side_effect = mock_editor
+        self.cli.main(['init'])
+        self.cli.main(['experiment', 'test'])
+        self.cli.main(['run', '-e', 'test', 'python', '-h'])
+        fridge = Fridge(self.fridge_path)
+        assert_that(fridge.trials, has_item(class_with(
+            reason='reason', experiment_name='test')))
+        # TODO check more?
+
+    # TODO empty EDITOR environment variable
     # TODO use argument instead of editor
     # TODO test reinit/FridgeError
     # TODO test init args
     # TODO unknown subcommand
+    # TODO shortening of commands?

@@ -1,4 +1,4 @@
-from .api import Fridge
+from .api import Fridge, Experiment
 import argparse
 import os
 import subprocess
@@ -39,6 +39,22 @@ class FridgeCli(object):
         fridge.create_experiment(parsed.name[0], description)
         fridge.commit()
 
+    def run(self, args):
+        parser = argparse.ArgumentParser(
+            prog='fridge run',
+            description='Run a trial and store results.')
+        parser.add_argument('-e', '--experiment', nargs=1, type=str)
+        parser.add_argument('args', nargs=argparse.REMAINDER)
+        parsed = parser.parse_args(args)
+
+        fridge = Fridge(os.getcwd())
+        # FIXME this has to be cleaner
+        exp = fridge.experiments.filter(
+            Experiment.name == parsed.experiment[0]).first()
+        trial = exp.create_trial()
+        trial.reason = self._get_from_editor('reason.')
+        trial.run_external(*parsed.args)
+
     def _get_from_editor(self, tempfile_prefix=''):
         # FIXME use fridge dir
         with tempfile.NamedTemporaryFile('r+', prefix=tempfile_prefix) as file:
@@ -48,5 +64,6 @@ class FridgeCli(object):
 
     dispatch = {
         'init': init,
-        'experiment': experiment
+        'experiment': experiment,
+        'run': run
     }
