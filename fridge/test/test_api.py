@@ -128,7 +128,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         self.reopen_fridge()
         assert_that(self.fridge.trials, has_item(class_with(reason=reason)))
 
-    def test_stores_trial_with_type(self):
+    def test_records_trial_type(self):
         trial = self.experiment.create_trial()
         trial.run(lambda workpath: None)
 
@@ -136,6 +136,19 @@ class TestFridgeTrialsApi(FrigdeFixture):
         # FIXME cast to list in all test as this gives better output.
         assert_that(list(self.fridge.trials), has_item(class_with(
             type='python-function')))
+
+    def test_records_trial_return_value(self):
+        trial = self.run_new_trial_and_reopen_fridge(lambda *args: 42)
+        assert_that(
+            trial.return_value.retrieve(), is_(equal_to(42)))
+
+    def test_records_trial_exception(self):
+        def raise_exception(*args):
+            raise Exception(42)
+
+        trial = self.run_new_trial_and_reopen_fridge(raise_exception)
+        assert_that(trial.exception.retrieve(), is_(all_of(
+            instance_of(Exception), class_with(args=(42,)))))
 
     def test_records_execution_time(self):
         timestamp_start = 90

@@ -173,6 +173,8 @@ class Trial(InFridgeBase):
     outcome = Column(Text, nullable=False, default='')
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
+    return_value = Column(PickleType)
+    exception = Column(PickleType)
     type = Column(
         Enum('notrun', 'python-function', 'external'), default='notrun',
         nullable=False)
@@ -210,7 +212,7 @@ class Trial(InFridgeBase):
         with open(stdout_filename, 'w') as stdout_file, \
                 open(stderr_filename, 'w') as stderr_file, \
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
-            subprocess.call(args)
+            self.return_value = lazify(subprocess.call(args))
 
         self._record_end_time()
         self._record_output_files()
@@ -234,7 +236,10 @@ class Trial(InFridgeBase):
         with open(stdout_filename, 'w') as stdout_file, \
                 open(stderr_filename, 'w') as stderr_file, \
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
-            fn(*args)
+            try:
+                self.return_value = lazify(fn(*args))
+            except Exception as ex:
+                self.exception = lazify(ex)
 
         self._record_end_time()
         self._record_output_files()
