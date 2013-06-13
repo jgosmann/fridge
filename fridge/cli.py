@@ -23,7 +23,3 @@ class FridgeCli(object):
     dispatch = {
         'init': init
     }
-
-
-if __name__ == '__main__':
-    FridgeCli().main(*sys.argv)
