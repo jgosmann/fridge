@@ -48,9 +48,7 @@ class FridgeCli(object):
         parsed = parser.parse_args(args)
 
         fridge = Fridge(os.getcwd())
-        # FIXME this has to be cleaner
-        exp = fridge.experiments.filter(
-            Experiment.name == parsed.experiment[0]).first()
+        exp = fridge.experiments.get(parsed.experiment[0])
         trial = exp.create_trial()
         trial.reason = self._get_from_editor('reason.')
         trial.run_external(*parsed.args)
