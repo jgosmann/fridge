@@ -17,7 +17,7 @@ class TestCli(object):
         shutil.rmtree(self.fridge_path)
 
     def test_init_creates_new_fridge(self):
-        self.cli.main('init')
+        self.cli.main(['init'])
         # check correct initialization by trying to open the fridge
         Fridge(self.fridge_path)
 
