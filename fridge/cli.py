@@ -1,4 +1,4 @@
-from .api import Fridge, Experiment
+from .api import Fridge
 import argparse
 import os
 import subprocess
