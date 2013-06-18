@@ -1,8 +1,11 @@
-from hamcrest import assert_that, contains, equal_to, has_entries, \
+from hamcrest import any_of, assert_that, contains, equal_to, has_entries, \
     instance_of, is_
 from nose.tools import raises
 from fridge.lazyPickle import lazify
-from unittest.mock import MagicMock
+try:
+    from unittest.mock import MagicMock
+except:
+    from mock import MagicMock
 try:
     import cPickle as pickle
 except:
@@ -46,7 +49,7 @@ class TestLazyPickles(object):
         finally:
             Pickleable = orig_class
 
-    @raises(pickle.UnpicklingError)
+    @raises(pickle.UnpicklingError, TypeError)
     def test_raises_exception_if_unpickling_fails(self):
         obj = {'a': 42, 'obj': Pickleable(0)}
         pickled = pickle.dumps(lazify(obj))
@@ -59,7 +62,7 @@ class TestLazyPickles(object):
         finally:
             Pickleable = orig_class
 
-    @raises(pickle.UnpicklingError)
+    @raises(pickle.UnpicklingError, TypeError)
     def test_raises_exception_if_unpickling_fails2(self):
         obj = {'a': 42, 'obj': Pickleable(0)}
         pickled = pickle.dumps(lazify(obj))
@@ -84,7 +87,7 @@ class TestLazyPickles(object):
         finally:
             Pickleable = orig_class
 
-    @raises(pickle.PicklingError)
+    @raises(pickle.PicklingError, TypeError)
     def test_raises_exception_on_failed_pickling(self):
         obj = {'a': 42, 'b': lambda: None, 'c': 23}
         lazify(obj)
@@ -96,8 +99,8 @@ class TestLazyPickles(object):
         lazify(obj, onerror)
         assert_that(len(onerror.call_args_list), is_(1))
         assert_that(
-            onerror.call_args_list[0][0],
-            contains(instance_of(pickle.PicklingError)))
+            onerror.call_args_list[0][0], contains(any_of(
+                instance_of(pickle.PicklingError), instance_of(TypeError))))
 
     def test_if_own_error_handler_its_return_value_is_used(self):
         onerror = MagicMock()

@@ -1,4 +1,8 @@
-from subprocess import DEVNULL
+try:
+    from subprocess import DEVNULL
+except:
+    import os
+    DEVNULL = open(os.devnull, 'w')
 import subprocess
 
 

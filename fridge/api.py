@@ -11,6 +11,7 @@ from .iocapture import CaptureStdout, CaptureStderr
 from .lazyPickle import lazify
 from .vcs import GitRepo
 import binascii
+import errno
 import hashlib
 import os
 import os.path
@@ -32,6 +33,15 @@ def sha1sum(path):
             buf = f.read(1024 * 1024)
             h.update(buf)
     return h.digest()
+
+
+def _makedirs(path, mode=0o777, exist_ok=False):
+    try:
+        os.makedirs(path, mode)
+    except OSError as err:
+        if exist_ok and err.errno == errno.EEXIST:
+            return
+        raise err
 
 
 class InFridge(object):
@@ -121,14 +131,14 @@ class ParameterObject(InFridgeBase):
         self.repr = repr(value)
         try:
             self.value = value
-        except pickle.PicklingError:
+        except (pickle.PicklingError, TypeError):
             warnings.warn(RuntimeWarning(
                 'Cannot pickle object. Only the string representation was ' +
                 'stored.'))
 
     @staticmethod
     def _handle_lazify_error(err):
-        if isinstance(err, pickle.PicklingError):
+        if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
             warnings.warn(RuntimeWarning(
                 'Cannot pickle object. Only the string representation was ' +
                 'stored.'))
@@ -252,7 +262,7 @@ class Trial(InFridgeBase):
                 raise FridgeError('Repository %s is dirty.' % p)
 
     def _prepare_run(self):
-        os.makedirs(self.workpath, exist_ok=True)
+        _makedirs(self.workpath, exist_ok=True)
 
     def _get_repo_rel_paths(self):
         if GitRepo.isrepo(os.path.join(self.fridge.path, '.')):
@@ -303,7 +313,7 @@ class Trial(InFridgeBase):
     # - parse functionality should be extracted from this class
     @staticmethod
     def _handle_lazify_error(err):
-        if isinstance(err, pickle.PicklingError):
+        if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
             warnings.warn(RuntimeWarning(
                 'Cannot pickle object. Only the string representation was ' +
                 'stored.'))
@@ -325,7 +335,7 @@ class Trial(InFridgeBase):
         self.files.append(file)
 
         if not os.path.exists(file._dir):
-            os.makedirs(file._dir, exist_ok=True)
+            _makedirs(file._dir, exist_ok=True)
             shutil.copy2(path, file._filepath)
 
     def _parse(self, path):
@@ -341,7 +351,7 @@ class Trial(InFridgeBase):
     def _move_data_to_final_location(self):
         # FIXME this function will need some kind of locking when it should
         # be possible to run multiple trials in parallel.
-        os.makedirs(self.datapath, exist_ok=True)
+        _makedirs(self.datapath, exist_ok=True)
         for item in os.listdir(self.workpath):
             os.rename(
                 os.path.join(self.workpath, item),

@@ -2,13 +2,16 @@ from datetime import datetime
 from fridge.api import Fridge, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
-    contains_inanyorder, contains_string, equal_to, has_entry, \
-    has_item, has_string, instance_of, is_
+    contains_inanyorder, contains_string, equal_to, has_item, has_string, \
+    instance_of, is_
 from hamcrest.library.text.stringcontainsinorder import \
     string_contains_in_order
 from matchers import class_with, file_with_content
 from nose.tools import raises
-from unittest.mock import patch
+try:
+    from unittest.mock import patch
+except:
+    from mock import patch
 import hashlib
 import os.path
 import shutil
@@ -39,7 +42,7 @@ class Pickleable(object):
         return 'Pickable(%i)' % self.id
 
 
-class FrigdeFixture(object):
+class FridgeFixture(object):
     def setUp(self):
         self.datetime_provider = DateTimeProviderMock
         self.fridge_path = tempfile.mkdtemp()
@@ -78,7 +81,7 @@ class TestFridgeInitApi(object):
             shutil.rmtree(fridge_path)
 
 
-class TestFridgeExperimentApi(FrigdeFixture):
+class TestFridgeExperimentApi(FridgeFixture):
     def test_stores_created_experiment(self):
         experiment_name = 'somename'
         experiment_desc = 'somedesc'
@@ -110,13 +113,13 @@ class TestFridgeExperimentApi(FrigdeFixture):
             exp.created, is_(equal_to(datetime.fromtimestamp(timestamp))))
 
 
-class TestFridgeTrialsApi(FrigdeFixture):
+class TestFridgeTrialsApi(FridgeFixture):
     def setUp(self):
-        super().setUp()
+        FridgeFixture.setUp(self)
         self.experiment = self.fridge.create_experiment('test', 'unused_desc')
 
     def reopen_fridge(self):
-        super().reopen_fridge()
+        FridgeFixture.reopen_fridge(self)
         self.experiment = self.fridge.experiments[0]
 
     def test_stores_trial_with_reason(self):
@@ -173,15 +176,17 @@ class TestFridgeTrialsApi(FrigdeFixture):
             os.path.join(self.fridge.path, self.fridge.DIRNAME),
             str(trial.id))
         expected_args = args + [workpath]
-        called = False
+        # Using dictionary as workaround for missing nonlocal keyword in
+        # Python < 3, see http://technotroph.wordpress.com/2012/10/01/python-closures-and-the-python-2-7-nonlocal-solution/
+        called = {0: False}
 
         def task(*args):
-            nonlocal called
-            called = True
+            #nonlocal called
+            called[0] = True
             assert_that(args, contains(*expected_args))
 
         trial.run(task, *args)
-        assert_that(called, is_(True))
+        assert_that(called[0], is_(True))
 
     def test_stores_git_sourcecode_revisions(self):
         repos = [(p, self.create_git_repo_with_dummy_commit(
@@ -191,9 +196,11 @@ class TestFridgeTrialsApi(FrigdeFixture):
         trial_id = trial.id
         self.reopen_fridge()
 
-        expected_revisions = [(p, repo.current_revision()) for p, repo in repos]
+        expected_revisions = [(p, repo.current_revision())
+                              for p, repo in repos]
         trial = self.fridge.trials.get(trial_id)
-        actual_revisions = [(rev.path, rev.revision) for rev in trial.revisions]
+        actual_revisions = [(rev.path, rev.revision)
+                            for rev in trial.revisions]
         assert_that(actual_revisions, contains_inanyorder(*expected_revisions))
 
     def test_stores_git_sourcecode_revision_for_single_root_repo(self):
@@ -209,7 +216,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     @raises(FridgeError)
     def test_raises_exception_for_dirty_repo(self):
-        repo = self.create_git_repo_with_dummy_commit(self.fridge_path)
+        self.create_git_repo_with_dummy_commit(self.fridge_path)
         with open(os.path.join(self.fridge_path, 'dirty.txt'), 'w') as file:
             file.write('dirty')
 
@@ -236,7 +243,6 @@ class TestFridgeTrialsApi(FrigdeFixture):
         self.reopen_fridge()
         return self.fridge.trials.get(trial_id)
 
-
     def test_records_called_function_name(self):
         def task_fn(*args):
             pass
@@ -247,7 +253,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     def test_records_run_arguments_representation(self):
         args = (42, 'some text', Pickleable(0))
-        trial = self.run_new_trial_and_reopen_fridge(
+        self.run_new_trial_and_reopen_fridge(
             lambda x, y, z, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
             *[anything()] + [class_with(repr=repr(a)) for a in args] +
@@ -263,8 +269,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
     def test_records_run_argument_without_object_if_pickling_fails(self):
         unpickleable = lambda: None
         args = (unpickleable,)
-        trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, workpath: None, *args)
+        self.run_new_trial_and_reopen_fridge(lambda x, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
             *[anything()] + [class_with(
                 repr=repr(a), value=class_with(pickle=None)) for a in args] +
@@ -282,8 +287,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
 
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
         args = (Pickleable(0),)
-        trial = self.run_new_trial_and_reopen_fridge(
-            lambda x, workpath: None, *args)
+        self.run_new_trial_and_reopen_fridge(lambda x, workpath: None, *args)
 
         global Pickleable
         orig_class = Pickleable
@@ -296,7 +300,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
         finally:
             Pickleable = orig_class
 
-    @raises(pickle.UnpicklingError)
+    @raises(pickle.UnpicklingError, TypeError)
     def test_raises_exception_on_parameter_access_if_unpickling_fails(self):
         args = (Pickleable(0),)
         trial = self.run_new_trial_and_reopen_fridge(
@@ -347,7 +351,7 @@ class TestFridgeTrialsApi(FrigdeFixture):
             with open(os.path.join(workpath, 'file.txt'), 'wb') as file:
                 file.write(b'somecontent')
 
-        trial = self.run_new_trial_and_reopen_fridge(gen_output)
+        self.run_new_trial_and_reopen_fridge(gen_output)
         outfile = os.path.join(
             self.fridge.path, self.fridge.config.data_path,
             self.experiment.name, 'file.txt')

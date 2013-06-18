@@ -2,7 +2,10 @@ from fridge.cli import FridgeCli
 from fridge.api import Fridge
 from hamcrest import assert_that, contains, has_item, instance_of, is_
 from matchers import class_with
-from unittest.mock import MagicMock
+try:
+    from unittest.mock import MagicMock
+except:
+    from mock import MagicMock
 import os
 import shutil
 import tempfile
