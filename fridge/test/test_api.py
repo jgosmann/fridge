@@ -505,8 +505,8 @@ class TestFridgeTrialsPluginApi(FridgeFixture):
     def test_calls_before_and_after_run_hooks(self):
         before_mock = MagicMock()
         after_mock = MagicMock()
-        Trial.before_run += before_mock
-        Trial.after_run += after_mock
+        Trial.before_run.append(before_mock)
+        Trial.after_run.append(after_mock)
 
         reason = 'Unit test.'
         trial = self.experiment.create_trial()
