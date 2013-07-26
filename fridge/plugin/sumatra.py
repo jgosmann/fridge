@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from weakref import WeakKeyDictionary
 
 from fridge.api import Trial
