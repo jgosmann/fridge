@@ -31,7 +31,6 @@ def before_run(trial):
     script_args = [arg.repr for arg in trial.arguments[1:]]
     label = '%s-%i' % (trial.experiment_name, trial.id)
 
-    # FIXME main file
     record = project.new_record(
         main_file=main_file,
         parameters=parameters, input_data=input_data, script_args=script_args,
