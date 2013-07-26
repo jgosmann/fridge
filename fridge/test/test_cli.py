@@ -70,3 +70,4 @@ class TestCli(object):
     # TODO test init args
     # TODO unknown subcommand
     # TODO shortening of commands?
+    # TODO test loading of plugins

@@ -1,5 +1,6 @@
 from .api import Fridge
 import argparse
+from importlib import import_module
 import os
 import subprocess
 import tempfile
@@ -16,10 +17,16 @@ class FridgeCli(object):
             description='Fridge stores your scientific simulation results ' +
             'and keeps them fresh.')
         parser.add_argument(
+            '-p', '--plugins', nargs='+', type=str, default=[],
+            help='Plugins to load.')
+        parser.add_argument(
             'cmd', nargs=1, type=str, choices=self.dispatch.keys(),
             help='Subcommand to execute.')
         parser.add_argument('args', nargs=argparse.REMAINDER)
         parsed = parser.parse_args(args)
+
+        for plugin in parsed.plugins:
+            import_module(plugin)
 
         self.dispatch[parsed.cmd[0]](self, parsed.args)
 
