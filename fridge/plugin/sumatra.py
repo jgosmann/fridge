@@ -29,12 +29,12 @@ def before_run(trial):
             except:
                 pass
     input_data = [f.filename for f in trial.files if f.type == 'input']
-    main_file = trial.arguments[0].repr
+    executable = trial.arguments[0].repr
     script_args = [arg.repr for arg in trial.arguments[1:]]
     label = '%s-%i' % (trial.experiment_name, trial.id)
 
     record = project.new_record(
-        main_file=main_file,
+        executable=executable,
         parameters=parameters, input_data=input_data, script_args=script_args,
         reason=trial.reason, label=label)
 
