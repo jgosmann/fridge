@@ -44,6 +44,10 @@ def _makedirs(path, mode=0o777, exist_ok=False):
         raise err
 
 
+class CallbackList(object):
+    pass
+
+
 class InFridge(object):
     def get_fridge(self):
         return Fridge.session_to_fridge[object_session(self)]
@@ -189,6 +193,9 @@ class Trial(InFridgeBase):
         Enum('notrun', 'python-function', 'external'), default='notrun',
         nullable=False)
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
+
+    before_run = CallbackList()
+    after_run = CallbackList()
 
     @hybrid_property
     def outputs(self):
