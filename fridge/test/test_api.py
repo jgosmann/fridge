@@ -78,6 +78,15 @@ class TestCallbackList(object):
         cb_list.append(cb)
         assert_that(cb_list, contains(cb))
 
+    def test_call_calls_all_calllbacks(self):
+        cbs = [MagicMock() for i in range(3)]
+        cb_list = CallbackList(cbs)
+        args = (0, 1, 2)
+        kwargs = {'answer': 42}
+        cb_list(*args, **kwargs)
+        for cb in cbs:
+            cb.assert_called_once_with(*args, **kwargs)
+
 
 class TestFridgeInitApi(object):
     @raises(FridgeError)

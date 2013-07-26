@@ -45,7 +45,9 @@ def _makedirs(path, mode=0o777, exist_ok=False):
 
 
 class CallbackList(list):
-    pass
+    def __call__(self, *args, **kwargs):
+        for cb in self:
+            cb(*args, **kwargs)
 
 
 class InFridge(object):
