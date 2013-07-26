@@ -1,17 +1,17 @@
 from datetime import datetime
-from fridge.api import Fridge, FridgeError
+from fridge.api import CallbackList, Fridge, Trial, FridgeError
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
     contains_inanyorder, contains_string, equal_to, has_item, has_string, \
     instance_of, is_
 from hamcrest.library.text.stringcontainsinorder import \
     string_contains_in_order
-from matchers import class_with, file_with_content
+from matchers import class_with, empty, file_with_content
 from nose.tools import raises
 try:
-    from unittest.mock import patch
+    from unittest.mock import MagicMock, patch
 except:
-    from mock import patch
+    from mock import MagicMock, patch
 import hashlib
 import os.path
 import shutil
@@ -60,6 +60,32 @@ class FridgeFixture(object):
     def reopen_fridge(self):
         self.fridge.close()
         self.open_fridge()
+
+
+class TestCallbackList(object):
+    def test_is_initially_empty(self):
+        cb_list = CallbackList()
+        assert_that(cb_list, is_(empty()))
+
+    def test_can_be_initialized_with_seq(self):
+        seq = [lambda x: 0, lambda x: 1, lambda x: 2]
+        cb_list = CallbackList(seq)
+        assert_that(cb_list, contains(*seq))
+
+    def test_can_append(self):
+        cb = lambda x: 0
+        cb_list = CallbackList()
+        cb_list.append(cb)
+        assert_that(cb_list, contains(cb))
+
+    def test_call_calls_all_calllbacks(self):
+        cbs = [MagicMock() for i in range(3)]
+        cb_list = CallbackList(cbs)
+        args = (0, 1, 2)
+        kwargs = {'answer': 42}
+        cb_list(*args, **kwargs)
+        for cb in cbs:
+            cb.assert_called_once_with(*args, **kwargs)
 
 
 class TestFridgeInitApi(object):
@@ -469,3 +495,23 @@ class TestFridgeTrialsApi(FridgeFixture):
             os.unlink(filename)
 
     # FIXME raise exception when trying to run an already run trial
+
+
+class TestFridgeTrialsPluginApi(FridgeFixture):
+    def setUp(self):
+        FridgeFixture.setUp(self)
+        self.experiment = self.fridge.create_experiment('test', 'unused_desc')
+
+    def test_calls_before_and_after_run_hooks(self):
+        before_mock = MagicMock()
+        after_mock = MagicMock()
+        Trial.before_run.append(before_mock)
+        Trial.after_run.append(after_mock)
+
+        reason = 'Unit test.'
+        trial = self.experiment.create_trial()
+        trial.reason = reason
+        trial.run(lambda workpath: None)
+
+        before_mock.assert_called_once_with(trial)
+        after_mock.assert_called_once_with(trial)

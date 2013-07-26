@@ -44,6 +44,12 @@ def _makedirs(path, mode=0o777, exist_ok=False):
         raise err
 
 
+class CallbackList(list):
+    def __call__(self, *args, **kwargs):
+        for cb in self:
+            cb(*args, **kwargs)
+
+
 class InFridge(object):
     def get_fridge(self):
         return Fridge.session_to_fridge[object_session(self)]
@@ -190,6 +196,9 @@ class Trial(InFridgeBase):
         nullable=False)
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
 
+    before_run = CallbackList()
+    after_run = CallbackList()
+
     @hybrid_property
     def outputs(self):
         return self.files.filter(File.type == 'output')
@@ -217,6 +226,7 @@ class Trial(InFridgeBase):
         self.fridge.commit()
 
         self._prepare_run()
+        self.before_run(self)
         stdout_filename = os.path.join(self.workpath, 'stdout.txt')
         stderr_filename = os.path.join(self.workpath, 'stderr.txt')
         with open(stdout_filename, 'w') as stdout_file, \
@@ -224,6 +234,7 @@ class Trial(InFridgeBase):
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
             self.return_value = lazify(subprocess.call(args))
 
+        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
         self.fridge.commit()
@@ -241,6 +252,7 @@ class Trial(InFridgeBase):
         self.fridge.commit()
 
         self._prepare_run()
+        self.before_run(self)
         stdout_filename = os.path.join(self.workpath, 'stdout.txt')
         stderr_filename = os.path.join(self.workpath, 'stderr.txt')
         with open(stdout_filename, 'w') as stdout_file, \
@@ -251,6 +263,7 @@ class Trial(InFridgeBase):
             except Exception as ex:
                 self.exception = lazify(ex)
 
+        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
         self.fridge.commit()
