@@ -67,6 +67,17 @@ class TestCallbackList(object):
         cb_list = CallbackList()
         assert_that(cb_list, is_(empty()))
 
+    def test_can_be_initialized_with_seq(self):
+        seq = [lambda x: 0, lambda x: 1, lambda x: 2]
+        cb_list = CallbackList(seq)
+        assert_that(cb_list, contains(*seq))
+
+    def test_can_append(self):
+        cb = lambda x: 0
+        cb_list = CallbackList()
+        cb_list.append(cb)
+        assert_that(cb_list, contains(cb))
+
 
 class TestFridgeInitApi(object):
     @raises(FridgeError)

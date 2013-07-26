@@ -44,7 +44,7 @@ def _makedirs(path, mode=0o777, exist_ok=False):
         raise err
 
 
-class CallbackList(object):
+class CallbackList(list):
     pass
 
 
