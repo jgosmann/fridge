@@ -226,6 +226,7 @@ class Trial(InFridgeBase):
         self.fridge.commit()
 
         self._prepare_run()
+        self.before_run(self)
         stdout_filename = os.path.join(self.workpath, 'stdout.txt')
         stderr_filename = os.path.join(self.workpath, 'stderr.txt')
         with open(stdout_filename, 'w') as stdout_file, \
@@ -233,6 +234,7 @@ class Trial(InFridgeBase):
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
             self.return_value = lazify(subprocess.call(args))
 
+        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
         self.fridge.commit()
@@ -250,6 +252,7 @@ class Trial(InFridgeBase):
         self.fridge.commit()
 
         self._prepare_run()
+        self.before_run(self)
         stdout_filename = os.path.join(self.workpath, 'stdout.txt')
         stderr_filename = os.path.join(self.workpath, 'stderr.txt')
         with open(stdout_filename, 'w') as stdout_file, \
@@ -260,6 +263,7 @@ class Trial(InFridgeBase):
             except Exception as ex:
                 self.exception = lazify(ex)
 
+        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
         self.fridge.commit()
