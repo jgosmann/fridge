@@ -359,7 +359,11 @@ class Trial(InFridgeBase):
         if path.endswith('.py'):
             entries = {}
             with open(path, 'r') as source:
-                compiled = compile(source.read(), path, 'exec')
+                import_fix = '''
+import sys
+sys.path.insert(0, %s)
+''' % repr(os.path.dirname(path))
+                compiled = compile(import_fix + source.read(), path, 'exec')
                 exec(compiled, entries)
             del entries['__builtins__']
             return entries

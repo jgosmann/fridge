@@ -481,6 +481,27 @@ class TestFridgeTrialsApi(FridgeFixture):
 
         assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
 
+    def test_allows_relative_imports_in_parsed_input_files(self):
+        directory = tempfile.mkdtemp()
+        try:
+            root = os.path.join(directory, 'root.py')
+            imported = os.path.join(directory, 'submod.py')
+            with open(root, 'w') as f:
+                f.write('import submod' + os.linesep)
+                f.write('somevar = submod.var' + os.linesep)
+            with open(imported, 'w') as f:
+                f.write('var = 42' + os.linesep)
+            trial = self.experiment.create_trial()
+            trial.run(lambda *args: None, root)
+        finally:
+            shutil.rmtree(directory)
+
+        trial_id = trial.id
+        self.reopen_fridge()
+        trial = self.fridge.trials.get(trial_id)
+
+        assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
+
     # TODO parsing file with unpickleable
     def test_issues_warning_if_pickling_of_parsed_config_item_fails(self):
         fd, filename = tempfile.mkstemp('.py')
