@@ -1,5 +1,6 @@
 from datetime import datetime
-from fridge.api import CallbackList, Fridge, Trial, FridgeError
+from fridge.api import CallbackList, Fridge, Trial, FridgeError, \
+    OnlyStringReprStoredWarning
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
     contains_inanyorder, contains_string, equal_to, has_item, has_string, \
@@ -142,6 +143,7 @@ class TestFridgeExperimentApi(FridgeFixture):
 class TestFridgeTrialsApi(FridgeFixture):
     def setUp(self):
         FridgeFixture.setUp(self)
+        warnings.simplefilter('always', OnlyStringReprStoredWarning)
         self.experiment = self.fridge.create_experiment('test', 'unused_desc')
 
     def reopen_fridge(self):
@@ -308,7 +310,7 @@ class TestFridgeTrialsApi(FridgeFixture):
         with warnings.catch_warnings(record=True) as w:
             trial.run(lambda x, workpath: None, *args)
             assert_that(w, has_item(class_with(message=all_of(
-                instance_of(RuntimeWarning),
+                instance_of(OnlyStringReprStoredWarning),
                 has_string(contains_string('pickle'))))))
 
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
@@ -488,7 +490,7 @@ class TestFridgeTrialsApi(FridgeFixture):
             with warnings.catch_warnings(record=True) as w:
                 trial.run(lambda *args: None, filename)
                 assert_that(w, has_item(class_with(message=all_of(
-                    instance_of(RuntimeWarning),
+                    instance_of(OnlyStringReprStoredWarning),
                     has_string(contains_string('pickle'))))))
         finally:
             os.close(fd)

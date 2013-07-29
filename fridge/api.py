@@ -24,6 +24,16 @@ except:
     import pickle
 
 
+# FIXME this exception should include further information about the problematic
+# object
+class OnlyStringReprStoredWarning(UserWarning):
+    def __init__(self):
+        super(OnlyStringReprStoredWarning, self).__init__(
+            'Cannot pickle object. Only the string representation was stored.')
+
+warnings.simplefilter('always', OnlyStringReprStoredWarning)
+
+
 # TODO test this function
 def sha1sum(path):
     h = hashlib.sha1()
@@ -138,16 +148,12 @@ class ParameterObject(InFridgeBase):
         try:
             self.value = value
         except (pickle.PicklingError, TypeError):
-            warnings.warn(RuntimeWarning(
-                'Cannot pickle object. Only the string representation was ' +
-                'stored.'))
+            warnings.warn(OnlyStringReprStoredWarning())
 
     @staticmethod
     def _handle_lazify_error(err):
         if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
-            warnings.warn(RuntimeWarning(
-                'Cannot pickle object. Only the string representation was ' +
-                'stored.'))
+            warnings.warn(OnlyStringReprStoredWarning())
             return None
         else:
             raise err
@@ -321,15 +327,13 @@ class Trial(InFridgeBase):
         self._record_files('output', self.workpath)
 
     # FIXME some refactoring is needed:
-    # - we have to identical _handle_lazify_error functions
+    # - we have two identical _handle_lazify_error functions
     # - some parts of add_file might be better included in the File class
     # - parse functionality should be extracted from this class
     @staticmethod
     def _handle_lazify_error(err):
         if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
-            warnings.warn(RuntimeWarning(
-                'Cannot pickle object. Only the string representation was ' +
-                'stored.'))
+            warnings.warn(OnlyStringReprStoredWarning())
             return None
         else:
             raise err
