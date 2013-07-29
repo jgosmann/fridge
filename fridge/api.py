@@ -6,6 +6,7 @@ from sqlalchemy.orm import backref, relationship, sessionmaker
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
+from types import ModuleType
 from weakref import WeakKeyDictionary
 from .iocapture import CaptureStdout, CaptureStderr
 from .lazyPickle import lazify
@@ -27,9 +28,12 @@ except:
 # FIXME this exception should include further information about the problematic
 # object
 class OnlyStringReprStoredWarning(UserWarning):
-    def __init__(self):
+    def __init__(self, pickling_exception):
+        self.pickling_exception = pickling_exception
         super(OnlyStringReprStoredWarning, self).__init__(
-            'Cannot pickle object. Only the string representation was stored.')
+            'Cannot pickle object. '
+            'Only the string representation was stored. '
+            'Reason: ' + str(pickling_exception))
 
 warnings.simplefilter('always', OnlyStringReprStoredWarning)
 
@@ -147,13 +151,13 @@ class ParameterObject(InFridgeBase):
         self.repr = repr(value)
         try:
             self.value = value
-        except (pickle.PicklingError, TypeError):
-            warnings.warn(OnlyStringReprStoredWarning())
+        except (pickle.PicklingError, TypeError) as err:
+            warnings.warn(OnlyStringReprStoredWarning(err))
 
     @staticmethod
     def _handle_lazify_error(err):
         if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
-            warnings.warn(OnlyStringReprStoredWarning())
+            warnings.warn(OnlyStringReprStoredWarning(err))
             return None
         else:
             raise err
@@ -333,7 +337,7 @@ class Trial(InFridgeBase):
     @staticmethod
     def _handle_lazify_error(err):
         if isinstance(err, pickle.PicklingError) or isinstance(err, TypeError):
-            warnings.warn(OnlyStringReprStoredWarning())
+            warnings.warn(OnlyStringReprStoredWarning(err))
             return None
         else:
             raise err
@@ -366,6 +370,10 @@ sys.path.insert(0, %s)
                 compiled = compile(import_fix + source.read(), path, 'exec')
                 exec(compiled, entries)
             del entries['__builtins__']
+            to_delete = [k for k in entries
+                         if isinstance(entries[k], ModuleType)]
+            for k in to_delete:
+                del entries[k]
             return entries
         return None
 

@@ -3,8 +3,7 @@ from fridge.api import CallbackList, Fridge, Trial, FridgeError, \
     OnlyStringReprStoredWarning
 from fridge.vcs import GitRepo
 from hamcrest import all_of, anything, assert_that, contains, \
-    contains_inanyorder, contains_string, equal_to, has_item, has_string, \
-    instance_of, is_
+    contains_inanyorder, equal_to, has_item, instance_of, is_
 from hamcrest.library.text.stringcontainsinorder import \
     string_contains_in_order
 from matchers import class_with, empty, file_with_content
@@ -297,7 +296,10 @@ class TestFridgeTrialsApi(FridgeFixture):
     def test_records_run_argument_without_object_if_pickling_fails(self):
         unpickleable = lambda: None
         args = (unpickleable,)
-        self.run_new_trial_and_reopen_fridge(lambda x, workpath: None, *args)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', OnlyStringReprStoredWarning)
+            self.run_new_trial_and_reopen_fridge(
+                lambda x, workpath: None, *args)
         assert_that(self.fridge.trials, has_item(class_with(arguments=contains(
             *[anything()] + [class_with(
                 repr=repr(a), value=class_with(pickle=None)) for a in args] +
