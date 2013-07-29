@@ -313,10 +313,11 @@ class TestFridgeTrialsApi(FridgeFixture):
         trial.run(lambda x, workpath: None, *args)
 
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
+        global Pickleable
+
         args = (Pickleable(0),)
         self.run_new_trial_and_reopen_fridge(lambda x, workpath: None, *args)
 
-        global Pickleable
         orig_class = Pickleable
         Pickleable = None
         try:
@@ -329,11 +330,12 @@ class TestFridgeTrialsApi(FridgeFixture):
 
     @raises(pickle.UnpicklingError, TypeError)
     def test_raises_exception_on_parameter_access_if_unpickling_fails(self):
+        global Pickleable
+
         args = (Pickleable(0),)
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, workpath: None, *args)
 
-        global Pickleable
         orig_class = Pickleable
         Pickleable = None
         try:
@@ -343,11 +345,12 @@ class TestFridgeTrialsApi(FridgeFixture):
 
     def test_can_access_parameters_in_dict_if_it_contains_unpickleable_values(
             self):
+        global Pickleable
+
         args = ({'accessible': 42, 'not accessible': Pickleable(0)},)
         trial = self.run_new_trial_and_reopen_fridge(
             lambda x, workpath: None, *args)
 
-        global Pickleable
         orig_class = Pickleable
         Pickleable = None
         try:
