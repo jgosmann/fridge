@@ -143,7 +143,7 @@ class TestFridgeExperimentApi(FridgeFixture):
 class TestFridgeTrialsApi(FridgeFixture):
     def setUp(self):
         FridgeFixture.setUp(self)
-        warnings.simplefilter('always', OnlyStringReprStoredWarning)
+        warnings.simplefilter('error', OnlyStringReprStoredWarning)
         self.experiment = self.fridge.create_experiment('test', 'unused_desc')
 
     def reopen_fridge(self):
@@ -303,15 +303,12 @@ class TestFridgeTrialsApi(FridgeFixture):
                 repr=repr(a), value=class_with(pickle=None)) for a in args] +
             [anything()]))))
 
+    @raises(OnlyStringReprStoredWarning)
     def test_issues_warning_if_pickling_of_argument_fails(self):
         unpickleable = lambda: None
         args = (unpickleable,)
         trial = self.experiment.create_trial()
-        with warnings.catch_warnings(record=True) as w:
-            trial.run(lambda x, workpath: None, *args)
-            assert_that(w, has_item(class_with(message=all_of(
-                instance_of(OnlyStringReprStoredWarning),
-                has_string(contains_string('pickle'))))))
+        trial.run(lambda x, workpath: None, *args)
 
     def test_parameter_repr_accessible_even_if_unpickling_not_possible(self):
         args = (Pickleable(0),)
@@ -503,16 +500,13 @@ class TestFridgeTrialsApi(FridgeFixture):
         assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
 
     # TODO parsing file with unpickleable
+    @raises(OnlyStringReprStoredWarning)
     def test_issues_warning_if_pickling_of_parsed_config_item_fails(self):
         fd, filename = tempfile.mkstemp('.py')
         try:
             os.write(fd, b'unpickleable = lambda: None')
             trial = self.experiment.create_trial()
-            with warnings.catch_warnings(record=True) as w:
-                trial.run(lambda *args: None, filename)
-                assert_that(w, has_item(class_with(message=all_of(
-                    instance_of(OnlyStringReprStoredWarning),
-                    has_string(contains_string('pickle'))))))
+            trial.run(lambda *args: None, filename)
         finally:
             os.close(fd)
             os.unlink(filename)
