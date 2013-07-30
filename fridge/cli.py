@@ -51,13 +51,17 @@ class FridgeCli(object):
             prog='fridge run',
             description='Run a trial and store results.')
         parser.add_argument('-e', '--experiment', nargs=1, type=str)
+        parser.add_argument('-r', '--reason', nargs=1, type=str)
         parser.add_argument('args', nargs=argparse.REMAINDER)
         parsed = parser.parse_args(args)
 
         fridge = Fridge(os.getcwd())
         exp = fridge.experiments.get(parsed.experiment[0])
         trial = exp.create_trial()
-        trial.reason = self._get_from_editor('reason.')
+        if parsed.reason is None:
+            trial.reason = self._get_from_editor('reason.')
+        else:
+            trial.reason = parsed.reason[0]
         trial.run_external(*parsed.args)
 
     def _get_from_editor(self, tempfile_prefix=''):
