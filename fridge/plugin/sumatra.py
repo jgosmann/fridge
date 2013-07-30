@@ -14,24 +14,18 @@ _records = WeakKeyDictionary()
 
 
 def _update_dict(d, new_values):
-    for k, v in new_values:
-        d[k] = v
+    for k, v in new_values.items():
+        try:
+            if not k in d:
+                d[k] = {}
+            _update_dict(d[k], v)
+        except:
+            d[k] = v
 
 
 def before_run(trial):
     project = load_project(trial.fridge.path)
-    parameters = {}
-    for arg in trial.arguments:
-        try:
-            _update_dict(parameters, arg.value)
-        except:
-            try:
-                _update_dict(parameters, build_parameters(arg.repr))
-            except:
-                pass
-    input_data = [
-        DataKey(f.filename, f.get_hexhash())
-        for f in trial.files if f.type == 'input']
+
     executable = get_executable(trial.arguments[0].value.retrieve())
     # FIXME this could be improved.
     # What is if we do state the interpreter explicitly and there is just a
@@ -40,7 +34,21 @@ def before_run(trial):
     # file might occur at a different position within the arguments.
     # Is it save to use value? But repr will add quotes.
     main_file = trial.arguments[1].value.retrieve()
-    script_args = [arg.repr for arg in trial.arguments[2:]]
+    input_files = [f for f in trial.files
+                   if f.type == 'input' and f.filename != main_file]
+
+    parameters = {}
+    for infile in input_files:
+        try:
+            _update_dict(parameters, build_parameters(infile.filename))
+        except:
+            try:
+                _update_dict(parameters, infile.parsed)
+            except:  # FIXME be more specific about what exceptions are ok
+                pass
+
+    input_data = [DataKey(f.filename, f.get_hexhash()) for f in input_files]
+    script_args = [str(arg.value.retrieve()) for arg in trial.arguments[2:]]
     label = '%s-%i' % (trial.experiment_name, trial.id)
 
     record = project.new_record(
