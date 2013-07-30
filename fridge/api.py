@@ -18,6 +18,8 @@ import os
 import os.path
 import shutil
 import subprocess
+import sys
+from threading import Thread
 import warnings
 try:
     import cPickle as pickle
@@ -242,7 +244,26 @@ class Trial(InFridgeBase):
         with open(stdout_filename, 'w') as stdout_file, \
                 open(stderr_filename, 'w') as stderr_file, \
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
-            self.return_value = lazify(subprocess.call(args))
+            proc = subprocess.Popen(
+                args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # TODO refactor and test this code
+            def forward_async(infile, outfile):
+                line = infile.readline()
+                while line != '':
+                    outfile.write(line)
+                    line = infile.readline()
+
+            fw_std_out = Thread(
+                target=forward_async, args=(proc.stdout, sys.stdout))
+            fw_std_err = Thread(
+                target=forward_async, args=(proc.stderr, sys.stderr))
+            fw_std_out.start()
+            fw_std_err.start()
+
+            self.return_value = lazify(proc.wait())
+            fw_std_out.join()
+            fw_std_err.join()
 
         self._record_end_time()
         self._record_output_files()
