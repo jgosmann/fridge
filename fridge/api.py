@@ -253,7 +253,9 @@ class Trial(InFridgeBase):
             # TODO refactor and test this code
             def forward_async(infile, outfile):
                 line = infile.readline()
-                while line != '':
+                while line != b'':
+                    if isinstance(line, bytes):
+                        line = line.decode()
                     outfile.write(line)
                     line = infile.readline()
 
