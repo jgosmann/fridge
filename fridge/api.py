@@ -294,9 +294,9 @@ class Trial(InFridgeBase):
             except Exception as ex:
                 self.exception = lazify(ex)
 
-        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
+        self.after_run(self)
         self.fridge.commit()
         self._move_data_to_final_location()
 
