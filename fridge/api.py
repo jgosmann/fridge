@@ -244,9 +244,9 @@ class Trial(InFridgeBase):
                 CaptureStdout(stdout_file), CaptureStderr(stderr_file):
             self.return_value = lazify(subprocess.call(args))
 
-        self.after_run(self)
         self._record_end_time()
         self._record_output_files()
+        self.after_run(self)
         self.fridge.commit()
         self._move_data_to_final_location()
 
