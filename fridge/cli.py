@@ -62,10 +62,15 @@ class FridgeCli(object):
 
     def _get_from_editor(self, tempfile_prefix=''):
         # FIXME use fridge dir
-        with tempfile.NamedTemporaryFile('r+', prefix=tempfile_prefix) as file:
-            if self.call([self.environ['EDITOR'], file.name]) != 0:
+        fd, filename = tempfile.mkstemp(prefix=tempfile_prefix)
+        os.close(fd)
+        try:
+            if self.call([self.environ['EDITOR'], filename]) != 0:
                 raise Exception  # FIXME use a reasonable exception
-            return file.read()
+            with open(filename, 'r') as file:
+                return file.read()
+        finally:
+            os.unlink(filename)
 
     dispatch = {
         'init': init,
