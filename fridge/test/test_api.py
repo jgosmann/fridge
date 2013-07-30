@@ -467,8 +467,12 @@ class TestFridgeTrialsApi(FridgeFixture):
 
         assert_that(trial.outcome, is_(equal_to(outcome)))
 
-    def test_stores_parsed_input_files(self):
-        fd, filename = tempfile.mkstemp('.py')
+    def test_stores_parsed_py_input_files_with_specific_name_components(self):
+        for name in ['a-cfg-test.py', 'bla.conf.bla.py']:
+            yield self.check_stores_parsed_py_input_files_with_name, name
+
+    def check_stores_parsed_py_input_files_with_name(self, name):
+        fd, filename = tempfile.mkstemp(name)
         try:
             os.write(fd, b'somevar = 42')
             trial = self.experiment.create_trial()
@@ -483,10 +487,26 @@ class TestFridgeTrialsApi(FridgeFixture):
 
         assert_that(trial.inputs[0].parsed['somevar'].retrieve(), is_(42))
 
+    def test_does_not_parse_py_input_files_with_wrong_name(self):
+        fd, filename = tempfile.mkstemp('foo.py')
+        try:
+            os.write(fd, b'somevar = 42')
+            trial = self.experiment.create_trial()
+            trial.run(lambda *args: None, filename)
+        finally:
+            os.close(fd)
+            os.unlink(filename)
+
+        trial_id = trial.id
+        self.reopen_fridge()
+        trial = self.fridge.trials.get(trial_id)
+
+        assert_that(trial.inputs[0].parsed, is_(None))
+
     def test_allows_relative_imports_in_parsed_input_files(self):
         directory = tempfile.mkdtemp()
         try:
-            root = os.path.join(directory, 'root.py')
+            root = os.path.join(directory, 'conf-root.py')
             imported = os.path.join(directory, 'submod.py')
             with open(root, 'w') as f:
                 f.write('import submod' + os.linesep)
@@ -507,7 +527,7 @@ class TestFridgeTrialsApi(FridgeFixture):
     # TODO parsing file with unpickleable
     @raises(OnlyStringReprStoredWarning)
     def test_issues_warning_if_pickling_of_parsed_config_item_fails(self):
-        fd, filename = tempfile.mkstemp('.py')
+        fd, filename = tempfile.mkstemp('cfg.py')
         try:
             os.write(fd, b'unpickleable = lambda: None')
             trial = self.experiment.create_trial()

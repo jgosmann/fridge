@@ -16,6 +16,7 @@ import errno
 import hashlib
 import os
 import os.path
+import re
 import shutil
 import subprocess
 import sys
@@ -208,6 +209,8 @@ class Trial(InFridgeBase):
         nullable=False)
     experiment_name = Column(String(128), ForeignKey('experiments.name'))
 
+    py_conf_pattern = re.compile(r'^.*(conf|cfg).*\.py$')
+
     before_run = CallbackList()
     after_run = CallbackList()
 
@@ -381,7 +384,7 @@ class Trial(InFridgeBase):
             shutil.copy2(path, file._filepath)
 
     def _parse(self, path):
-        if path.endswith('.py'):
+        if self.py_conf_pattern.match(path) is not None:
             entries = {}
             with open(path, 'r') as source:
                 import_fix = '''
