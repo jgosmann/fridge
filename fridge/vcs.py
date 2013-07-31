@@ -29,7 +29,11 @@ class GitRepo(object):
             ['git', cmd] + list(args), cwd=self.path)
 
     def isdirty(self):
-        return self.do('status', '--porcelain').strip() != b''
+        # FIXME is it wise to ignore untracked files? But always aborting
+        # because of them is also quite annoying and they might be config files
+        # you do not want to commit.
+        return self.do(
+            'status', '--porcelain', '--untracked-files=no').strip() != b''
 
     @classmethod
     def isrepo(cls, path):
