@@ -454,6 +454,7 @@ class Fridge(object):
         self.session_to_fridge[self.session] = self
         self.experiments = self.session.query(Experiment)
         self.trials = self.session.query(Trial)
+        self.files = self.session.query(File)
         self.datetime_provider = datetime
         self.config = StaticConfig()
 

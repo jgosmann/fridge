@@ -1,4 +1,4 @@
-from .api import Fridge
+from .api import Fridge, sha1sum
 import argparse
 from importlib import import_module
 import os
@@ -64,6 +64,44 @@ class FridgeCli(object):
             trial.reason = parsed.reason[0]
         trial.run_external(*parsed.args)
 
+    def show(self, args):
+        # FIXME test this function
+        parser = argparse.ArgumentParser(
+            prog='fridge show', description='Show the results of a trial.')
+        parser.add_argument('-f', '--file', nargs=1, type=str, required=True)
+        parsed = parser.parse_args(args)
+
+        fridge = Fridge(os.getcwd())
+
+        sha1 = sha1sum(parsed.file[0])
+        files = fridge.files.filter_by(hash=sha1)
+        assert files.count() == 1  # FIXME handling of multiple files
+        trial = files[0].trial
+        self._show_trial(trial)
+
+    def _show_trial(self, trial):
+        print('''id: {id}
+reason: {reason}
+outcome: {outcome}
+start: {start}
+end: {end}
+return value: {return_value}
+experiment name: {experiment_name}
+'''.format(
+            id=trial.id, reason=trial.reason, outcome=trial.outcome,
+            start=trial.start, end=trial.end, return_value=trial.return_value,
+            experiment_name=trial.experiment_name))
+
+        for file in trial.files:
+            show = file.filename.endswith('stdout.txt') or \
+                file.filename.endswith('stderr.txt')
+            if show:
+                print(file.filename)
+                with file.open('r') as f:
+                    for line in f:
+                        print(line)
+                print()
+
     def _get_from_editor(self, tempfile_prefix=''):
         # FIXME use fridge dir
         fd, filename = tempfile.mkstemp(prefix=tempfile_prefix)
@@ -79,5 +117,6 @@ class FridgeCli(object):
     dispatch = {
         'init': init,
         'experiment': experiment,
-        'run': run
+        'run': run,
+        'show': show
     }
