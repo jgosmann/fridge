@@ -50,6 +50,7 @@ Commands
     fridge checkout <id> <target>
     fridge log
     fridge whence <file>  # find out how/which commit created file
+    fridge verify
 
 Objects
 -------
