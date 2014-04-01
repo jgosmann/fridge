@@ -1,29 +1,104 @@
 #!/usr/bin/env python
 
 import argparse
+import errno
+import hashlib
 import os
+import os.path
+import shutil
 import sys
+
+def calc_checksum(path):
+    h = hashlib.sha1()
+    with open(path, 'rb') as f:
+        buf = b'\0'
+        while buf != b'':
+            buf = f.read(1024 * 1024)
+            h.update(buf)
+    return h.hexdigest()
+
+def add_blob(path):
+    checksum = calc_checksum(path)
+    target_dir = os.path.join('.fridge', 'blobs', checksum[:2])
+    target_name = checksum[2:]
+    target_path = os.path.join(target_dir, target_name)
+    if os.path.exists(target_path):
+        return checksum  # TODO test this return path
+
+    try:
+        os.makedirs(target_dir)
+    except OSError, err:
+        if err.errno != errno.EEXIST:
+            raise
+    shutil.copyfile(path, target_path)
+    return checksum
+
+def write_snapshot(snapshot):
+    data = '\n'.join(
+        '{} {}'.format(checksum, path) for checksum, path in snapshot)
+    checksum = hashlib.sha1(data).hexdigest()
+    target_dir = os.path.join('.fridge', 'snapshots', checksum[:2])
+    target_name = checksum[2:]
+    target_path = os.path.join(target_dir, target_name)
+    if os.path.exists(target_path):
+        return checksum  # TODO test this return path
+
+    try:
+        os.makedirs(target_dir)
+    except OSError, err:
+        if err.errno != errno.EEXIST:
+            raise
+
+    with open(target_path, 'w') as f:
+        f.write(data)
+    return checksum
+
+def set_head(checksum):
+    with open(os.path.join('.fridge', 'head'), 'w') as f:
+        f.write(checksum)
+
+def get_head():
+    with open(os.path.join('.fridge', 'head')) as f:
+        return f.read()
+
+def read_snapshot(checksum):
+    source_dir = os.path.join('.fridge', 'snapshots', checksum[:2])
+    source_name = checksum[2:]
+    source_path = os.path.join(source_dir, source_name)
+
+    with open(source_path) as f:
+        for line in f:
+            # FIXME more robust splitting?
+            yield line.strip().split(' ', 1)
+
+def checkout_blob(checksum, path):
+    source_dir = os.path.join('.fridge', 'blobs', checksum[:2])
+    source_name = checksum[2:]
+    source_path = os.path.join(source_dir, source_name)
+    shutil.copy(source_path, path)
 
 
 def main(argv=None):
     if argv is None:
-        argv = sys.argv
+        argv = sys.argv[1:]
 
     # TODO add description and usage help
     parser = argparse.ArgumentParser()
     parser.add_argument('cmd', nargs=1, type=str)
     # FIXME what happens with an invalid cmd?
-    parser.add_argument('argv', nargs='*', type=str)
+    parser.add_argument('argv', nargs=argparse.REMAINDER, type=str)
     args = parser.parse_args(argv)
 
     if 'init' in args.cmd:
         os.mkdir('.fridge')
-    elif 'commit':
+    elif 'commit' in args.cmd:
         # FIXME repo dir shouldn't be fixed
         # FIXME what to do about symlinks?
         # TODO about errors?
         snapshot = []
         for dirpath, dirnames, filenames in os.walk('.'):
+            if '.fridge' in dirnames:
+                dirnames.remove('.fridge')
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
                 checksum = add_blob(path)
@@ -31,7 +106,7 @@ def main(argv=None):
                 snapshot.append((checksum, path))
         checksum = write_snapshot(snapshot)
         set_head(checksum)
-    elif 'checkout':
+    elif 'checkout' in args.cmd:
         head = get_head()
         snapshot = read_snapshot(head)
         for checksum, path in snapshot:

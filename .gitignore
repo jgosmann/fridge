@@ -2,3 +2,4 @@
 *.pyc
 .ropeproject
 __pycache__
+systemtests/test-output
