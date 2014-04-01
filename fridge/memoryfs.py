@@ -10,6 +10,15 @@ class MemoryFile(object):
         self.delegate = None
         self.open()
 
+    def get_node(self, split_path):
+        # FIXME this is neither tested nor nice
+        try:
+            iter(split_path).next()
+        except StopIteration:
+            return self
+        else:
+            raise OSError(errno.ENOENT, 'No such file or directory.')
+
     def open(self):
         self.delegate = StringIO.StringIO(self.content)
 
@@ -98,6 +107,17 @@ class MemoryFS(object):
 
         dest_node.children[dest_base] = src_node.children[src_base]
         del src_node.children[src_base]
+
+    def symlink(self, src, link_name):
+        src_node = self.get_node(self._split_whole_path(src))
+
+        dest_split = self._split_whole_path(link_name)
+        dest_base = dest_split.pop()
+        dest_node = self.get_node(dest_split)
+
+        # This is actually a hard link. Might be necessary to change this in
+        # the future, but for now it will work.
+        dest_node.children[dest_base] = src_node
 
     def open(self, path, mode='r'):
         split_path = self._split_whole_path(path)

@@ -110,6 +110,22 @@ class TestMemoryFS(object):
         assert excinfo.value.errno == errno.EEXIST
         assert excinfo.value.filename == 'dest'
 
+    def test_symlink(self):
+        fs = MemoryFS()
+        fs.mkdir('sub1')
+        fs.mkdir('sub2')
+        src = os.path.join('sub1', 'src')
+        dest = os.path.join('sub2', 'dest')
+        with fs.open(src, 'w') as f:
+            f.write('dummy')
+        fs.symlink(src, dest)
+        with fs.open(dest, 'a+') as f:
+            f.seek(0, os.SEEK_SET)
+            assert f.read() == 'dummy'
+            f.write(' content')
+        with fs.open(src, 'r') as f:
+            assert f.read() == 'dummy content'
+
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()
