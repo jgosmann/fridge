@@ -89,3 +89,12 @@ class TestMemoryFS(object):
         with fs.open('filename', mode) as f:
             f.write('content')
         assert fs.children['filename'].content == 'dummy content'
+
+    @pytest.mark.parametrize('mode', ['w', 'w+'])
+    def test_allows_overwriting_of_files(self, mode):
+        fs = MemoryFS()
+        with fs.open('filename', 'w') as f:
+            f.write('dummy ')
+        with fs.open('filename', mode) as f:
+            f.write('content')
+        assert fs.children['filename'].content == 'content'
