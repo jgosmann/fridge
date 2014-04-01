@@ -76,3 +76,10 @@ class TestMemoryFS(object):
             fs.mkdir('dir')
         assert excinfo.value.errno == errno.EEXIST
         assert excinfo.value.filename == 'dir'
+
+    @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
+    def test_allows_writing_of_files(self, mode):
+        fs = MemoryFS()
+        with fs.open('filename', mode) as f:
+            f.write('dummy content')
+        assert fs.children['filename'].content == 'dummy content'

@@ -64,3 +64,18 @@ class MemoryFS(object):
             raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
         node.children[split_path[-1]] = MemoryFS(self)
+
+    def open(self, path, mode='r'):
+        split_path = self._split_whole_path(path)
+        filename = split_path[-1]
+        node = self.get_node(split_path[:-1])
+
+        create = 'w' in mode or ('a' in mode and filename not in node.children)
+        if create:
+            node.children[filename] = MemoryFile()
+        f = node.children[filename]
+        #if 'a' in mode:
+            #f.seek(0, os.SEEK_SET)
+        #else:
+            #f.seek(0, os.SEEK_END)
+        return f
