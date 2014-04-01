@@ -19,9 +19,23 @@ def main(argv=None):
     if 'init' in args.cmd:
         os.mkdir('.fridge')
     elif 'commit':
-        pass  # TODO
+        # FIXME repo dir shouldn't be fixed
+        # FIXME what to do about symlinks?
+        # TODO about errors?
+        snapshot = []
+        for dirpath, dirnames, filenames in os.walk('.'):
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                checksum = add_blob(path)
+                # FIXME file size, c and m time, access rights?
+                snapshot.append((checksum, path))
+        checksum = write_snapshot(snapshot)
+        set_head(checksum)
     elif 'checkout':
-        pass  # TODO
+        head = get_head()
+        snapshot = read_snapshot(head)
+        for checksum, path in snapshot:
+            checkout_blob(checksum, path)
 
 if __name__ == '__main__':
     sys.exit(main())
