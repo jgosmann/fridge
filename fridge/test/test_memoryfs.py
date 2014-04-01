@@ -1,4 +1,4 @@
-from fridge.memoryfs import MemoryFile
+from fridge.memoryfs import MemoryFile, MemoryFS
 
 
 class TestMemoryFile(object):
@@ -20,3 +20,10 @@ class TestMemoryFile(object):
         f.close()
         f.open()
         assert f.read() == 'test'
+
+
+class TestMemoryFS(object):
+    def test_mkdir(self):
+        fs = MemoryFS()
+        fs.mkdir('test')
+        assert 'test' in fs.children
