@@ -84,6 +84,18 @@ class MemoryFS(object):
         if not created_dir:
             raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
+    def rename(self, src, dest):
+        src_split = self._split_whole_path(src)
+        src_base = src_split.pop()
+        src_node = self.get_node(src_split)
+
+        dest_split = self._split_whole_path(dest)
+        dest_base = dest_split.pop()
+        dest_node = self.get_node(dest_split)
+
+        dest_node.children[dest_base] = src_node.children[src_base]
+        del src_node.children[src_base]
+
     def open(self, path, mode='r'):
         split_path = self._split_whole_path(path)
         filename = split_path.pop()

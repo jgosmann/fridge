@@ -91,6 +91,16 @@ class TestMemoryFS(object):
         assert excinfo.value.errno == errno.EEXIST
         assert excinfo.value.filename == path
 
+    def test_rename(self):
+        fs = MemoryFS()
+        src = os.path.join('sub1', 'original')
+        fs.makedirs(src)
+        fs.mkdir('sub2')
+        instance = fs.children['sub1'].children['original']
+        fs.rename(src, os.path.join('sub2', 'new'))
+        assert 'original' not in fs.children['sub1'].children
+        assert fs.children['sub2'].children['new'] is instance
+
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()
