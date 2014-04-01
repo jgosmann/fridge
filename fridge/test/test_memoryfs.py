@@ -1,3 +1,4 @@
+import errno
 import os
 
 import pytest
@@ -59,3 +60,11 @@ class TestMemoryFS(object):
         fs.mkdir('test/subdir')
         assert 'test' in fs.children
         assert 'subdir' in fs.children['test'].children
+
+    def test_mkdir_raises_exception_if_dir_exists(self):
+        fs = MemoryFS()
+        fs.mkdir('dir')
+        with pytest.raises(OSError) as excinfo:
+            fs.mkdir('dir')
+        assert excinfo.value.errno == errno.EEXIST
+        assert excinfo.value.filename == 'dir'

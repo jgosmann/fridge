@@ -1,4 +1,5 @@
 import collections
+import errno
 import os
 import StringIO
 
@@ -52,4 +53,8 @@ class MemoryFS(object):
     def mkdir(self, path):
         split_path = self._split_whole_path(path)
         node = self.get_node(split_path[:-1])
+
+        if split_path[-1] in node.children:
+            raise OSError(errno.EEXIST, 'Directory exists already.', path)
+
         node.children[split_path[-1]] = MemoryFS(self)
