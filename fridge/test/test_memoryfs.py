@@ -1,3 +1,5 @@
+import os
+
 from fridge.memoryfs import MemoryFile, MemoryFS
 
 
@@ -23,6 +25,18 @@ class TestMemoryFile(object):
 
 
 class TestMemoryFS(object):
+    def test_get_node_without_path(self):
+        fs = MemoryFS()
+        assert fs == fs.get_node([])
+
+    def test_get_subnodes(self):
+        fs = MemoryFS()
+        fs1 = MemoryFS(fs)
+        fs2 = MemoryFS(fs1)
+        fs.children['1'] = fs1
+        fs1.children['2'] = fs2
+        assert fs2 == fs.get_node(['1', os.curdir, os.pardir, '1', '2'])
+
     def test_mkdir(self):
         fs = MemoryFS()
         fs.mkdir('test')
