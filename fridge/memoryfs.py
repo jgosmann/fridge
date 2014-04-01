@@ -42,33 +42,47 @@ class MemoryFS(object):
         while path != '':
             path, tail = os.path.split(path)
             split.appendleft(tail)
-        return list(split)
+        return split
 
     def get_node(self, split_path):
-        if len(split_path) <= 0:
+        it = iter(split_path)
+        try:
+            name = it.next()
+        except StopIteration:
             return self
 
-        if split_path[0] == os.path.curdir:
+        if name == os.path.curdir:
             node = self
-        elif split_path[0] == os.path.pardir:
+        elif name == os.path.pardir:
             node = self.parent
         else:
-            node = self.children[split_path[0]]
-        return node.get_node(split_path[1:])
+            node = self.children[name]
+        return node.get_node(it)
 
     def mkdir(self, path):
         split_path = self._split_whole_path(path)
-        node = self.get_node(split_path[:-1])
+        dirname = split_path.pop()
+        node = self.get_node(split_path)
 
-        if split_path[-1] in node.children:
+        if dirname in node.children:
             raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
-        node.children[split_path[-1]] = MemoryFS(self)
+        node.children[dirname] = MemoryFS(self)
+
+    def makedirs(self, path):
+        split_path = self._split_whole_path(path)
+
+        node = self
+        while len(split_path) > 0:
+            dirname = split_path.popleft()
+            if dirname not in node.children:
+                node.mkdir(dirname)
+            node = node.get_node([dirname])
 
     def open(self, path, mode='r'):
         split_path = self._split_whole_path(path)
-        filename = split_path[-1]
-        node = self.get_node(split_path[:-1])
+        filename = split_path.pop()
+        node = self.get_node(split_path)
 
         create = 'w' in mode or ('a' in mode and filename not in node.children)
         if create:
