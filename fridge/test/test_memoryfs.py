@@ -40,4 +40,6 @@ class TestMemoryFS(object):
     def test_mkdir(self):
         fs = MemoryFS()
         fs.mkdir('test')
+        fs.mkdir('test/subdir')
         assert 'test' in fs.children
+        assert 'subdir' in fs.children['test'].children
