@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 from fridge.memoryfs import MemoryFile, MemoryFS
 
 
@@ -45,6 +47,11 @@ class TestMemoryFS(object):
         # This corresponds to Unix behavior
         fs = MemoryFS()
         assert fs.get_node([os.pardir]) == fs
+
+    def test_get_non_existent_node(self):
+        fs = MemoryFS()
+        with pytest.raises(KeyError):
+            fs.get_node(['nonexistent'])
 
     def test_mkdir(self):
         fs = MemoryFS()
