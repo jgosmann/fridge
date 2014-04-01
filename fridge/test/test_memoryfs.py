@@ -25,6 +25,10 @@ class TestMemoryFile(object):
 
 
 class TestMemoryFS(object):
+    def test_parent_of_top_node_is_node_itself(self):
+        fs = MemoryFS()
+        assert fs.parent == fs
+
     def test_get_node_without_path(self):
         fs = MemoryFS()
         assert fs == fs.get_node([])
@@ -36,6 +40,11 @@ class TestMemoryFS(object):
         fs.children['1'] = fs1
         fs1.children['2'] = fs2
         assert fs2 == fs.get_node(['1', os.curdir, os.pardir, '1', '2'])
+
+    def test_get_parent_node_of_parent_is_parent(self):
+        # This corresponds to Unix behavior
+        fs = MemoryFS()
+        assert fs.get_node([os.pardir]) == fs
 
     def test_mkdir(self):
         fs = MemoryFS()

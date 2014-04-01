@@ -26,6 +26,8 @@ class MemoryFile(object):
 class MemoryFS(object):
     def __init__(self, parent=None):
         self.children = {}
+        if parent is None:
+            parent = self
         self.parent = parent
 
     def _split_whole_path(self, path):
