@@ -80,3 +80,12 @@ class TestMemoryFS(object):
         with fs.open('filename', mode) as f:
             f.write('dummy content')
         assert fs.children['filename'].content == 'dummy content'
+
+    @pytest.mark.parametrize('mode', ['a', 'a+'])
+    def test_allows_appending_to_files(self, mode):
+        fs = MemoryFS()
+        with fs.open('filename', 'w') as f:
+            f.write('dummy ')
+        with fs.open('filename', mode) as f:
+            f.write('content')
+        assert fs.children['filename'].content == 'dummy content'

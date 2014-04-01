@@ -74,8 +74,7 @@ class MemoryFS(object):
         if create:
             node.children[filename] = MemoryFile()
         f = node.children[filename]
-        #if 'a' in mode:
-            #f.seek(0, os.SEEK_SET)
-        #else:
-            #f.seek(0, os.SEEK_END)
+        f.open()
+        if 'a' in mode:
+            f.seek(0, os.SEEK_END)
         return f
