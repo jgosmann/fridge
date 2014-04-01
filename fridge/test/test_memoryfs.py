@@ -82,6 +82,15 @@ class TestMemoryFS(object):
         assert 'test' in existing.children
         assert 'subdir' in existing.children['test'].children
 
+    def test_makedirs_raises_exception_if_dir_exists(self):
+        fs = MemoryFS()
+        path = os.path.join('one', 'two')
+        fs.makedirs(path)
+        with pytest.raises(OSError) as excinfo:
+            fs.makedirs(path)
+        assert excinfo.value.errno == errno.EEXIST
+        assert excinfo.value.filename == path
+
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()

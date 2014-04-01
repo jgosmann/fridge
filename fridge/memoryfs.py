@@ -72,12 +72,17 @@ class MemoryFS(object):
     def makedirs(self, path):
         split_path = self._split_whole_path(path)
 
+        created_dir = False
         node = self
         while len(split_path) > 0:
             dirname = split_path.popleft()
             if dirname not in node.children:
                 node.mkdir(dirname)
+                created_dir = True
             node = node.get_node([dirname])
+
+        if not created_dir:
+            raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
     def open(self, path, mode='r'):
         split_path = self._split_whole_path(path)
