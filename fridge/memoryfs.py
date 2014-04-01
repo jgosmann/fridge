@@ -93,6 +93,9 @@ class MemoryFS(object):
         dest_base = dest_split.pop()
         dest_node = self.get_node(dest_split)
 
+        if dest_base in dest_node.children:
+            raise OSError(errno.EEXIST, 'Destination exists already.', dest)
+
         dest_node.children[dest_base] = src_node.children[src_base]
         del src_node.children[src_base]
 

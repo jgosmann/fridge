@@ -101,6 +101,15 @@ class TestMemoryFS(object):
         assert 'original' not in fs.children['sub1'].children
         assert fs.children['sub2'].children['new'] is instance
 
+    def test_rename_raises_exception_if_dest_exists(self):
+        fs = MemoryFS()
+        fs.mkdir('src')
+        fs.mkdir('dest')
+        with pytest.raises(OSError) as excinfo:
+            fs.rename('src', 'dest')
+        assert excinfo.value.errno == errno.EEXIST
+        assert excinfo.value.filename == 'dest'
+
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()
