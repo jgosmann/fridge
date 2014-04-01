@@ -8,6 +8,7 @@ class MemoryFile(object):
     def __init__(self):
         self.content = ''
         self.delegate = None
+        self.open()
 
     def open(self):
         self.delegate = StringIO.StringIO(self.content)
@@ -23,7 +24,6 @@ class MemoryFile(object):
         return getattr(self.delegate, name)
 
     def __enter__(self):
-        self.open()
         return self
 
     def __exit__(self, err_type, value, traceback):
