@@ -98,3 +98,12 @@ class TestMemoryFS(object):
         with fs.open('filename', mode) as f:
             f.write('content')
         assert fs.children['filename'].content == 'content'
+
+    @pytest.mark.parametrize('mode', ['r', 'r+'])
+    def test_allows_reading_of_files(self, mode):
+        fs = MemoryFS()
+        with fs.open('filename', 'w') as f:
+            f.write('dummy content')
+        with fs.open('filename', mode) as f:
+            data = f.read()
+        assert data == 'dummy content'
