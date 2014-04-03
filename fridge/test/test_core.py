@@ -27,6 +27,10 @@ def cas_factory():
     return CasMockFactory()
 
 @pytest.fixture
+def fs():
+    return MemoryFS()
+
+@pytest.fixture
 def fridge(cas_factory):
     return FridgeCore.init(os.curdir, MemoryFS(), cas_factory)
 
@@ -42,9 +46,8 @@ class TestFridgeCore(object):
         fridge.add_blob('path')
         cas_factory['blobs'].store.assert_called_once_with('path')
 
-    def test_writing_and_reading_snapshot(self):
+    def test_writing_and_reading_snapshot(self, fs):
         s = self._create_snapshot()
-        fs = MemoryFS()
 
         fridge = FridgeCore.init(os.curdir, fs)
         key = fridge.add_snapshot(s)
@@ -53,9 +56,7 @@ class TestFridgeCore(object):
         fridge = FridgeCore(os.curdir, fs)
         assert s == fridge.read_snapshot(key)
 
-    def test_setting_and_getting_head(self):
-        fs = MemoryFS()
-
+    def test_setting_and_getting_head(self, fs):
         fridge = FridgeCore.init(os.curdir, fs)
         fridge.set_head('ab12cd')
         del fridge
