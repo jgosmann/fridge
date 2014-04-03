@@ -16,7 +16,7 @@ class SnapshotItem(object):
 
     def __repr__(self):
         return 'SnapshotItem(checksum={checksum}, path={path})'.format(
-            checksum=self.checksum, path=self.path)
+            checksum=repr(self.checksum), path=repr(self.path))
 
     # TODO test
     @classmethod
@@ -43,8 +43,8 @@ class FridgeCore(object):
         return self._blobs.store(path)
 
     def add_snapshot(self, snapshot):
-        data = '\n'.join(
-            '{0} {1}'.format(item.checksum, item.path) for item in snapshot)
+        data = u'\n'.join(
+            u'{0} {1}'.format(item.checksum, item.path) for item in snapshot)
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(data)

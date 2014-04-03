@@ -7,29 +7,43 @@ from fridge.memoryfs import MemoryFile, MemoryFS
 
 
 class TestMemoryFile(object):
-    def test_can_be_written(self):
-        f = MemoryFile()
-        f.write('test')
-        f.flush()
-        assert f.content == 'test'
+    @pytest.fixture(params=['t', 'b'])
+    def mode(self, request):
+        return request.param
 
-    def test_close_flushes_content(self):
+    @pytest.fixture
+    def mf(self, mode):
         f = MemoryFile()
-        f.write('test')
-        f.close()
-        assert f.content == 'test'
+        f.open(mode)
+        return f
 
-    def test_can_be_reopened_and_read(self):
-        f = MemoryFile()
-        f.write('test')
-        f.close()
-        f.open()
-        assert f.read() == 'test'
+    @pytest.fixture
+    def test_content(self, mode):
+        if mode == 'b':
+            return b'testbytes'
+        else:
+            return u'testbytes'
 
-    def test_can_be_used_in_with(self):
-        with MemoryFile() as f:
-            f.write('test')
-        assert f.content == 'test'
+    def test_can_be_written(self, mf, test_content):
+        mf.write(test_content)
+        mf.flush()
+        assert mf.content == b'testbytes'
+
+    def test_close_flushes_content(self, mf, test_content):
+        mf.write(test_content)
+        mf.close()
+        assert mf.content == b'testbytes'
+
+    def test_can_be_reopened_and_read(self, mf, test_content):
+        mf.write(test_content)
+        mf.close()
+        mf.open()
+        assert mf.read() == u'testbytes'
+
+    def test_can_be_used_in_with(self, mode, test_content):
+        with MemoryFile().open(mode) as f:
+            f.write(test_content)
+        assert f.content == b'testbytes'
 
 
 class TestMemoryFS(object):
@@ -117,45 +131,45 @@ class TestMemoryFS(object):
         src = os.path.join('sub1', 'src')
         dest = os.path.join('sub2', 'dest')
         with fs.open(src, 'w') as f:
-            f.write('dummy')
+            f.write(u'dummy')
         fs.symlink(src, dest)
         with fs.open(dest, 'a+') as f:
             f.seek(0, os.SEEK_SET)
-            assert f.read() == 'dummy'
-            f.write(' content')
+            assert f.read() == u'dummy'
+            f.write(u' content')
         with fs.open(src, 'r') as f:
-            assert f.read() == 'dummy content'
+            assert f.read() == u'dummy content'
 
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()
         with fs.open('filename', mode) as f:
-            f.write('dummy content')
-        assert fs.children['filename'].content == 'dummy content'
+            f.write(u'dummy content')
+        assert fs.children['filename'].content == b'dummy content'
 
     @pytest.mark.parametrize('mode', ['a', 'a+'])
     def test_allows_appending_to_files(self, mode):
         fs = MemoryFS()
         with fs.open('filename', 'w') as f:
-            f.write('dummy ')
+            f.write(u'dummy ')
         with fs.open('filename', mode) as f:
-            f.write('content')
-        assert fs.children['filename'].content == 'dummy content'
+            f.write(u'content')
+        assert fs.children['filename'].content == b'dummy content'
 
     @pytest.mark.parametrize('mode', ['w', 'w+'])
     def test_allows_overwriting_of_files(self, mode):
         fs = MemoryFS()
         with fs.open('filename', 'w') as f:
-            f.write('dummy ')
+            f.write(u'dummy ')
         with fs.open('filename', mode) as f:
-            f.write('content')
-        assert fs.children['filename'].content == 'content'
+            f.write(u'content')
+        assert fs.children['filename'].content == b'content'
 
     @pytest.mark.parametrize('mode', ['r', 'r+'])
     def test_allows_reading_of_files(self, mode):
         fs = MemoryFS()
         with fs.open('filename', 'w') as f:
-            f.write('dummy content')
+            f.write(u'dummy content')
         with fs.open('filename', mode) as f:
             data = f.read()
-        assert data == 'dummy content'
+        assert data == u'dummy content'
