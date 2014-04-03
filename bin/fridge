@@ -8,6 +8,9 @@ import os.path
 import shutil
 import sys
 
+from fridge.cas import ContentAddressableStorage
+
+
 def calc_checksum(path):
     h = hashlib.sha1()
     with open(path, 'rb') as f:
@@ -18,20 +21,8 @@ def calc_checksum(path):
     return h.hexdigest()
 
 def add_blob(path):
-    checksum = calc_checksum(path)
-    target_dir = os.path.join('.fridge', 'blobs', checksum[:2])
-    target_name = checksum[2:]
-    target_path = os.path.join(target_dir, target_name)
-    if os.path.exists(target_path):
-        return checksum  # TODO test this return path
-
-    try:
-        os.makedirs(target_dir)
-    except OSError, err:
-        if err.errno != errno.EEXIST:
-            raise
-    shutil.copyfile(path, target_path)
-    return checksum
+    cas = ContentAddressableStorage(os.path.join('.fridge', 'blobs'))
+    return cas.store(path)
 
 def write_snapshot(snapshot):
     data = '\n'.join(
@@ -71,11 +62,20 @@ def read_snapshot(checksum):
             # FIXME more robust splitting?
             yield line.strip().split(' ', 1)
 
+# TODO implement this and some other operations in a way that leaves the
+# original state on error.
 def checkout_blob(checksum, path):
     source_dir = os.path.join('.fridge', 'blobs', checksum[:2])
     source_name = checksum[2:]
     source_path = os.path.join(source_dir, source_name)
-    shutil.copy(source_path, path)
+    try:
+        os.symlink(source_path, path)
+    except OSError as err:
+        if err.errno == errno.EEXIST:
+            if not os.path.samefile(source_path, path):
+                pass  # Raise exception.
+        else:
+            raise
 
 
 def main(argv=None):
