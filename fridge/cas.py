@@ -37,7 +37,7 @@ class ContentAddressableStorage(object):
 
         try:
             self._fs.makedirs(os.path.dirname(target_path))
-        except OSError, err:
+        except OSError as err:
             if err.errno != errno.EEXIST:
                 raise
 

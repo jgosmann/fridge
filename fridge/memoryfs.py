@@ -1,26 +1,27 @@
 import collections
 import errno
+from io import StringIO
 import os
-import StringIO
 
 
+# FIXME does not support binary files
 class MemoryFile(object):
     def __init__(self):
-        self.content = ''
+        self.content = u''
         self.delegate = None
         self.open()
 
     def get_node(self, split_path):
         # FIXME this is neither tested nor nice
         try:
-            iter(split_path).next()
+            next(iter(split_path))
         except StopIteration:
             return self
         else:
             raise OSError(errno.ENOENT, 'No such file or directory.')
 
     def open(self):
-        self.delegate = StringIO.StringIO(self.content)
+        self.delegate = StringIO(self.content)
 
     def flush(self):
         self.content = self.delegate.getvalue()
@@ -56,7 +57,7 @@ class MemoryFS(object):
     def get_node(self, split_path):
         it = iter(split_path)
         try:
-            name = it.next()
+            name = next(it)
         except StopIteration:
             return self
 
@@ -124,6 +125,7 @@ class MemoryFS(object):
         filename = split_path.pop()
         node = self.get_node(split_path)
 
+        assert 'b' not in mode  # FIXME not yet supported
         create = 'w' in mode or ('a' in mode and filename not in node.children)
         if create:
             node.children[filename] = MemoryFile()

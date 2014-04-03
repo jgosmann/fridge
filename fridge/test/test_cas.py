@@ -16,14 +16,14 @@ class TestContentAddressableStorage(object):
         fs = MemoryFS()
         cas = self.create_cas(fs)
         with fs.open('testfile', 'w') as f:
-            f.write('dummy content')
+            f.write(u'dummy content')
         key = cas.store('testfile')
         # Close and reopen
         del cas
         cas = self.create_cas(fs)
         with fs.open(cas.get_path(key), 'r') as f:
             content = f.read()
-        assert content == 'dummy content'
+        assert content == u'dummy content'
 
     # TODO test write protection
     # TODO do symlinking (test whether file can still be accessed)
