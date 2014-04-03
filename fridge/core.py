@@ -1,3 +1,4 @@
+import errno
 import os.path
 
 from fridge.cas import ContentAddressableStorage
@@ -62,3 +63,16 @@ class FridgeCore(object):
         path = os.path.join(self._path, '.fridge', 'head')
         with self._fs.open(path, 'r') as f:
             return f.read()
+
+    def checkout_blob(self, key, path):
+        source_path = self._blobs.get_path(key)
+        try:
+            self._fs.symlink(source_path, path)
+        except OSError as err:
+            if err.errno == errno.EEXIST:
+                # FIXME should be call to self._fs, is samefile actually
+                # checking file system level?
+                if not os.path.samefile(source_path, path):
+                    pass  # FIXME Raise exception.
+            else:
+                raise

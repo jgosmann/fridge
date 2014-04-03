@@ -62,3 +62,12 @@ class TestFridgeCore(object):
 
         fridge = FridgeCore(os.curdir, fs)
         assert fridge.get_head() == 'ab12cd'
+
+    # TODO test file exists, two cases: same and not same
+    def test_checkout_blob(self, fs, cas_factory, fridge):
+        with fs.open('mockfile', 'w') as f:
+            f.write('content')
+        cas_factory['blobs'].get_path.return_value = 'mockfile'
+        fridge.checkout_blob('key', 'target')
+        # FIXME this only works as long as symlinks are actually hard links.
+        assert fs.get_node(['mockfile']) is fs.get_node(['target'])
