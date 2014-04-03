@@ -1,5 +1,8 @@
 *.egg-info
 *.pyc
+.coverage
 .ropeproject
+.tox
 __pycache__
+MANIFEST
 systemtests/test-output
