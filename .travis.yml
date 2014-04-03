@@ -10,6 +10,7 @@ install:
     - pip install pytest-cov
 script:
     - pip install .
-    - py.test --cov fridge
+    - py.test --cov fridge fridge
+    - py.test systemtests
 after_success:
     coveralls
