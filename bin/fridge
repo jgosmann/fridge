@@ -11,15 +11,6 @@ import sys
 from fridge.cas import ContentAddressableStorage
 
 
-def calc_checksum(path):
-    h = hashlib.sha1()
-    with open(path, 'rb') as f:
-        buf = b'\0'
-        while buf != b'':
-            buf = f.read(1024 * 1024)
-            h.update(buf)
-    return h.hexdigest()
-
 def add_blob(path):
     cas = ContentAddressableStorage(os.path.join('.fridge', 'blobs'))
     return cas.store(path)
