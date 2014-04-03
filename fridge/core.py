@@ -71,7 +71,6 @@ class FridgeCore(object):
 
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
-        print key, source_path, path
         try:
             self._fs.symlink(source_path, path)
         except OSError as err:
