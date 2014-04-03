@@ -1,11 +1,11 @@
 import os
 import os.path
 
-from scripttest import TestFileEnvironment
+import scripttest
 
 
 def test_persists_data():
-    env = TestFileEnvironment()
+    env = scripttest.TestFileEnvironment()
     # FIXME path to fridge script should be determined in some other way
     env.run('../../bin/fridge', 'init')
     env.writefile('somefile', 'with some content')
