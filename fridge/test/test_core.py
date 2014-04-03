@@ -1,6 +1,7 @@
 import os.path
 
 from mock import MagicMock
+import pytest
 
 from fridge.memoryfs import MemoryFS
 from fridge.core import FridgeCore
@@ -20,9 +21,16 @@ class CasMockFactory(object):
         return self._cas[key]
 
 
+@pytest.fixture
+def cas_factory():
+    return CasMockFactory()
+
+@pytest.fixture
+def fridge(cas_factory):
+    return FridgeCore(MemoryFS(), cas_factory)
+
+
 class TestFridgeCore(object):
-    def test_add_blob(self):
-        cas_factory = CasMockFactory()
-        fridge = FridgeCore(MemoryFS(), cas_factory)
+    def test_add_blob(self, cas_factory, fridge):
         fridge.add_blob('path')
         cas_factory['blobs'].store.assert_called_once_with('path')
