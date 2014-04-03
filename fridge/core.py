@@ -52,3 +52,13 @@ class FridgeCore(object):
     def read_snapshot(self, key):
         with self._fs.open(self._snapshots.get_path(key)) as f:
             return self.parse_snapshot(f.read())
+
+    def set_head(self, key):
+        path = os.path.join(self._path, '.fridge', 'head')
+        with self._fs.open(path, 'w') as f:
+            f.write(key)
+
+    def get_head(self):
+        path = os.path.join(self._path, '.fridge', 'head')
+        with self._fs.open(path, 'r') as f:
+            return f.read()

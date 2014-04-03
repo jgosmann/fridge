@@ -52,3 +52,13 @@ class TestFridgeCore(object):
 
         fridge = FridgeCore(os.curdir, fs)
         assert s == fridge.read_snapshot(key)
+
+    def test_setting_and_getting_head(self):
+        fs = MemoryFS()
+
+        fridge = FridgeCore.init(os.curdir, fs)
+        fridge.set_head('ab12cd')
+        del fridge
+
+        fridge = FridgeCore(os.curdir, fs)
+        assert fridge.get_head() == 'ab12cd'
