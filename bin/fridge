@@ -2,10 +2,8 @@
 
 import argparse
 import errno
-import hashlib
 import os
 import os.path
-import shutil
 import sys
 
 from fridge.cas import ContentAddressableStorage
