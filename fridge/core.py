@@ -1,5 +1,7 @@
 import os.path
 
+from fridge.cas import ContentAddressableStorage
+
 
 class SnapshotItem(object):
     __slots__ = ['checksum', 'path']
@@ -19,7 +21,7 @@ class SnapshotItem(object):
 
 
 class FridgeCore(object):
-    def __init__(self, path, fs, cas_factory):
+    def __init__(self, path, fs, cas_factory=ContentAddressableStorage):
         self._path = path
         self._fs = fs
         self._blobs = cas_factory(os.path.join(path, '.fridge', 'blobs'), fs)
@@ -27,7 +29,7 @@ class FridgeCore(object):
             path, '.fridge', 'snapshots'), fs)
 
     @classmethod
-    def init(cls, path, fs, cas_factory):
+    def init(cls, path, fs, cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
         return cls(path, fs, cas_factory)
 
@@ -40,9 +42,13 @@ class FridgeCore(object):
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(data)
-        self._snapshots.store(tmp_file)
+        return self._snapshots.store(tmp_file)
 
     # TODO test this function
     def parse_snapshot(self, serialized_snapshot):
         return [SnapshotItem.parse(line)
                 for line in serialized_snapshot.split('\n')]
+
+    def read_snapshot(self, key):
+        with self._fs.open(self._snapshots.get_path(key)) as f:
+            return self.parse_snapshot(f.read())

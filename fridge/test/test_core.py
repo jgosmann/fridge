@@ -1,7 +1,7 @@
 import hashlib
 import os.path
 
-from mock import ANY, MagicMock
+from mock import MagicMock
 import pytest
 
 from fridge.memoryfs import MemoryFS
@@ -16,16 +16,6 @@ class CasMockFactory(object):
         path = os.path.relpath(path, '.fridge')
         if path not in self._cas:
             self._cas[path] = MagicMock()
-            self._cas[path].store.contents = []
-
-            def store(p):
-                try:
-                    with fs.open(p) as f:
-                        self._cas[path].store.contents.append(f.read())
-                except KeyError:  # FIXME should be OSError
-                    pass
-            self._cas[path].store.side_effect = store
-
         return self._cas[path]
 
     def __getitem__(self, key):
@@ -38,7 +28,7 @@ def cas_factory():
 
 @pytest.fixture
 def fridge(cas_factory):
-    return FridgeCore.init('.', MemoryFS(), cas_factory)
+    return FridgeCore.init(os.curdir, MemoryFS(), cas_factory)
 
 
 class TestFridgeCore(object):
@@ -57,9 +47,13 @@ class TestFridgeCore(object):
         fridge.add_blob('path')
         cas_factory['blobs'].store.assert_called_once_with('path')
 
-    def test_writing_and_parsing_snapshot(self, cas_factory, fridge):
+    def test_writing_and_reading_snapshot(self):
         s = self._create_snapshot()
-        fridge.add_snapshot(s)
-        cas_factory['snapshots'].store.assert_called_once_with(ANY)
-        assert s == fridge.parse_snapshot(
-            cas_factory['snapshots'].store.contents[0])
+        fs = MemoryFS()
+
+        fridge = FridgeCore.init(os.curdir, fs)
+        key = fridge.add_snapshot(s)
+        del fridge
+
+        fridge = FridgeCore(os.curdir, fs)
+        assert s == fridge.read_snapshot(key)
