@@ -44,7 +44,7 @@ class FridgeCore(object):
 
     def add_snapshot(self, snapshot):
         data = '\n'.join(
-            '{} {}'.format(item.checksum, item.path) for item in snapshot)
+            '{0} {1}'.format(item.checksum, item.path) for item in snapshot)
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(data)
