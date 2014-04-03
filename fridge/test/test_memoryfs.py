@@ -7,29 +7,43 @@ from fridge.memoryfs import MemoryFile, MemoryFS
 
 
 class TestMemoryFile(object):
-    def test_can_be_written(self):
-        f = MemoryFile()
-        f.write(u'test')
-        f.flush()
-        assert f.content == u'test'
+    @pytest.fixture(params=['t', 'b'])
+    def mode(self, request):
+        return request.param
 
-    def test_close_flushes_content(self):
+    @pytest.fixture
+    def mf(self, mode):
         f = MemoryFile()
-        f.write(u'test')
-        f.close()
-        assert f.content == u'test'
+        f.open(mode)
+        return f
 
-    def test_can_be_reopened_and_read(self):
-        f = MemoryFile()
-        f.write(u'test')
-        f.close()
-        f.open()
-        assert f.read() == u'test'
+    @pytest.fixture
+    def test_content(self, mode):
+        if mode == 'b':
+            return b'testbytes'
+        else:
+            return u'testbytes'
 
-    def test_can_be_used_in_with(self):
-        with MemoryFile() as f:
-            f.write(u'test')
-        assert f.content == u'test'
+    def test_can_be_written(self, mf, test_content):
+        mf.write(test_content)
+        mf.flush()
+        assert mf.content == b'testbytes'
+
+    def test_close_flushes_content(self, mf, test_content):
+        mf.write(test_content)
+        mf.close()
+        assert mf.content == b'testbytes'
+
+    def test_can_be_reopened_and_read(self, mf, test_content):
+        mf.write(test_content)
+        mf.close()
+        mf.open()
+        assert mf.read() == u'testbytes'
+
+    def test_can_be_used_in_with(self, mode, test_content):
+        with MemoryFile().open(mode) as f:
+            f.write(test_content)
+        assert f.content == b'testbytes'
 
 
 class TestMemoryFS(object):
@@ -131,7 +145,7 @@ class TestMemoryFS(object):
         fs = MemoryFS()
         with fs.open('filename', mode) as f:
             f.write(u'dummy content')
-        assert fs.children['filename'].content == u'dummy content'
+        assert fs.children['filename'].content == b'dummy content'
 
     @pytest.mark.parametrize('mode', ['a', 'a+'])
     def test_allows_appending_to_files(self, mode):
@@ -140,7 +154,7 @@ class TestMemoryFS(object):
             f.write(u'dummy ')
         with fs.open('filename', mode) as f:
             f.write(u'content')
-        assert fs.children['filename'].content == u'dummy content'
+        assert fs.children['filename'].content == b'dummy content'
 
     @pytest.mark.parametrize('mode', ['w', 'w+'])
     def test_allows_overwriting_of_files(self, mode):
@@ -149,7 +163,7 @@ class TestMemoryFS(object):
             f.write(u'dummy ')
         with fs.open('filename', mode) as f:
             f.write(u'content')
-        assert fs.children['filename'].content == u'content'
+        assert fs.children['filename'].content == b'content'
 
     @pytest.mark.parametrize('mode', ['r', 'r+'])
     def test_allows_reading_of_files(self, mode):

@@ -1,15 +1,15 @@
 import collections
 import errno
-from io import StringIO
+from io import BytesIO, StringIO
 import os
 
 
 # FIXME does not support binary files
 class MemoryFile(object):
     def __init__(self):
-        self.content = u''
+        self.content = b''
         self.delegate = None
-        self.open()
+        self.mode = None
 
     def get_node(self, split_path):
         # FIXME this is neither tested nor nice
@@ -20,14 +20,23 @@ class MemoryFile(object):
         else:
             raise OSError(errno.ENOENT, 'No such file or directory.')
 
-    def open(self):
-        self.delegate = StringIO(self.content)
+    def open(self, mode='r'):
+        self.mode = mode
+        if 'b' in mode:
+            self.delegate = BytesIO(self.content)
+        else:
+            self.delegate = StringIO(self.content.decode())
+        return self
 
     def flush(self):
-        self.content = self.delegate.getvalue()
+        self.delegate.flush()
+        if 'b' in self.mode:
+            self.content = self.delegate.getvalue()
+        else:
+            self.content = self.delegate.getvalue().encode()
 
     def close(self):
-        self.content = self.delegate.getvalue()
+        self.flush()
         self.delegate.close()
 
     def __getattr__(self, name):
@@ -125,12 +134,12 @@ class MemoryFS(object):
         filename = split_path.pop()
         node = self.get_node(split_path)
 
-        assert 'b' not in mode  # FIXME not yet supported
         create = 'w' in mode or ('a' in mode and filename not in node.children)
         if create:
             node.children[filename] = MemoryFile()
         f = node.children[filename]
-        f.open()
+        f.open(mode)
+        # FIXME append should be handled in file class
         if 'a' in mode:
             f.seek(0, os.SEEK_END)
         return f
