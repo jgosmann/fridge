@@ -31,8 +31,8 @@ def fs():
     return MemoryFS()
 
 @pytest.fixture
-def fridge(cas_factory):
-    return FridgeCore.init(os.curdir, MemoryFS(), cas_factory)
+def fridge(fs, cas_factory):
+    return FridgeCore.init(os.curdir, fs, cas_factory)
 
 
 class TestFridgeCore(object):
