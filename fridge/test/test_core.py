@@ -1,4 +1,3 @@
-import hashlib
 import os.path
 
 from mock import MagicMock
