@@ -27,22 +27,12 @@ def add_blob(path):
 def write_snapshot(snapshot):
     data = '\n'.join(
         '{} {}'.format(checksum, path) for checksum, path in snapshot)
-    checksum = hashlib.sha1(data).hexdigest()
-    target_dir = os.path.join('.fridge', 'snapshots', checksum[:2])
-    target_name = checksum[2:]
-    target_path = os.path.join(target_dir, target_name)
-    if os.path.exists(target_path):
-        return checksum  # TODO test this return path
-
-    try:
-        os.makedirs(target_dir)
-    except OSError, err:
-        if err.errno != errno.EEXIST:
-            raise
-
-    with open(target_path, 'w') as f:
+    tmp_file = os.path.join('.fridge', 'tmp')
+    with open(tmp_file, 'w') as f:
         f.write(data)
-    return checksum
+
+    cas = ContentAddressableStorage(os.path.join('.fridge', 'snapshots'))
+    return cas.store(tmp_file)
 
 def set_head(checksum):
     with open(os.path.join('.fridge', 'head'), 'w') as f:
