@@ -8,7 +8,7 @@ install:
     - pip install coveralls
     - pip install pytest-cov
 script:
-    - pip install .
+    - pip install -e .
     - py.test --cov fridge fridge
     - py.test systemtests
 after_success:
