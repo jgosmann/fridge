@@ -43,11 +43,8 @@ def get_head():
         return f.read()
 
 def read_snapshot(checksum):
-    source_dir = os.path.join('.fridge', 'snapshots', checksum[:2])
-    source_name = checksum[2:]
-    source_path = os.path.join(source_dir, source_name)
-
-    with open(source_path) as f:
+    cas = ContentAddressableStorage(os.path.join('.fridge', 'snapshots'))
+    with open(cas.get_path(checksum)) as f:
         for line in f:
             # FIXME more robust splitting?
             yield line.strip().split(' ', 1)
