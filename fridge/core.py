@@ -1,7 +1,7 @@
 import errno
 import os.path
 
-from fridge.cas import ContentAddressableStorage
+from fridge.cas import ContentAddressableStorage, FileSystem
 
 
 class SnapshotItem(object):
@@ -14,6 +14,10 @@ class SnapshotItem(object):
     def __eq__(self, other):
         return self.checksum == other.checksum and self.path == other.path
 
+    def __repr__(self):
+        return 'SnapshotItem(checksum={checksum}, path={path})'.format(
+            checksum=self.checksum, path=self.path)
+
     # TODO test
     @classmethod
     def parse(cls, serialized):
@@ -22,7 +26,8 @@ class SnapshotItem(object):
 
 
 class FridgeCore(object):
-    def __init__(self, path, fs, cas_factory=ContentAddressableStorage):
+    def __init__(
+            self, path, fs=FileSystem(), cas_factory=ContentAddressableStorage):
         self._path = path
         self._fs = fs
         self._blobs = cas_factory(os.path.join(path, '.fridge', 'blobs'), fs)
@@ -30,12 +35,12 @@ class FridgeCore(object):
             path, '.fridge', 'snapshots'), fs)
 
     @classmethod
-    def init(cls, path, fs, cas_factory=ContentAddressableStorage):
+    def init(cls, path, fs=FileSystem(), cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
         return cls(path, fs, cas_factory)
 
     def add_blob(self, path):
-        self._blobs.store(path)
+        return self._blobs.store(path)
 
     def add_snapshot(self, snapshot):
         data = '\n'.join(
@@ -66,6 +71,7 @@ class FridgeCore(object):
 
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
+        print key, source_path, path
         try:
             self._fs.symlink(source_path, path)
         except OSError as err:

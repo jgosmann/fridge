@@ -4,6 +4,7 @@ import os
 import os.path
 
 
+# FIXME move to another module
 class FileSystem(object):
     def mkdir(self, path):
         os.mkdir(path)
