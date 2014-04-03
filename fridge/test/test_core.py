@@ -33,14 +33,9 @@ def fridge(cas_factory):
 
 class TestFridgeCore(object):
     def _create_snapshot(self):
-        # FIXME dont call sha1 directly.
         return [
-            SnapshotItem(
-                checksum=hashlib.sha1('a').hexdigest(),
-                path='a'),
-            SnapshotItem(
-                checksum=hashlib.sha1('b').hexdigest(),
-                path='b')
+            SnapshotItem(checksum='a1b2', path='a'),
+            SnapshotItem(checksum='cd34', path='b')
         ]
 
     def test_add_blob(self, cas_factory, fridge):
