@@ -40,6 +40,8 @@ class MemoryFile(MemoryFSNode):
             self.delegate = BytesIO(self.content)
         else:
             self.delegate = StringIO(self.content.decode())
+        if 'a' in mode:
+            self.delegate.seek(0, os.SEEK_END)
         return self
 
     def flush(self):
@@ -132,7 +134,4 @@ class MemoryFS(MemoryFSNode):
             node.children[filename] = MemoryFile()
         f = node.children[filename]
         f.open(mode)
-        # FIXME append should be handled in file class
-        if 'a' in mode:
-            f.seek(0, os.SEEK_END)
         return f

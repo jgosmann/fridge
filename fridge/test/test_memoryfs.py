@@ -45,6 +45,13 @@ class TestMemoryFile(object):
             f.write(test_content)
         assert f.content == b'testbytes'
 
+    def test_can_append(self, mf, mode, test_content):
+        mf.write(test_content)
+        mf.close()
+        with mf.open(mode + 'a') as f:
+            f.write(test_content)
+        assert mf.content == 2 * b'testbytes'
+
 
 class TestMemoryFS(object):
     def test_parent_of_top_node_is_node_itself(self):
