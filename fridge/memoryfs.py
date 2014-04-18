@@ -254,7 +254,8 @@ class MemoryFS(MemoryFSNode):
         dest_node = self.get_node(dest_split)
 
         # This is actually a hard link. Might be necessary to change this in
-        # the future, but for now it will work.
+        # the future, but for now it will work as we provide no method which
+        # would allow to differentiate between the two.
         dest_node.children[dest_base] = src_node
 
     def open(self, path, mode='r'):
