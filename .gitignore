@@ -4,5 +4,6 @@
 .ropeproject
 .tox
 __pycache__
+dist
 MANIFEST
 systemtests/test-output
