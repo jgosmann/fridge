@@ -27,7 +27,6 @@ class MemoryFSNode(object):
         return node.get_node(it)
 
 
-# FIXME does not support binary files
 class MemoryFile(MemoryFSNode):
     def __init__(self, parent=None):
         super(MemoryFile, self).__init__(parent)
