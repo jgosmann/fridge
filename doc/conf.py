@@ -30,7 +30,12 @@ import os
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.intersphinx',
+    'numpydoc'
 ]
+numpydoc_show_class_members = False
+intersphinx_mapping = {'python': ('http://docs.python.org/3.3', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

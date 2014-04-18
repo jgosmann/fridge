@@ -5,5 +5,6 @@
 .tox
 __pycache__
 dist
+doc/_build
 MANIFEST
 systemtests/test-output
