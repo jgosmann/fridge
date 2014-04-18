@@ -4,21 +4,36 @@ from io import BytesIO, StringIO
 import os
 
 
+class MemoryFSNode(object):
+    def __init__(self, parent=None):
+        if parent is None:
+            parent = self
+        self.parent = parent
+        self.children = {}
+
+    def get_node(self, split_path):
+        it = iter(split_path)
+        try:
+            name = next(it)
+        except StopIteration:
+            return self
+
+        if name == os.path.curdir:
+            node = self
+        elif name == os.path.pardir:
+            node = self.parent
+        else:
+            node = self.children[name]
+        return node.get_node(it)
+
+
 # FIXME does not support binary files
-class MemoryFile(object):
-    def __init__(self):
+class MemoryFile(MemoryFSNode):
+    def __init__(self, parent=None):
+        super(MemoryFile, self).__init__(parent)
         self.content = b''
         self.delegate = None
         self.mode = None
-
-    def get_node(self, split_path):
-        # FIXME this is neither tested nor nice
-        try:
-            next(iter(split_path))
-        except StopIteration:
-            return self
-        else:
-            raise OSError(errno.ENOENT, 'No such file or directory.')
 
     def open(self, mode='r'):
         self.mode = mode
@@ -49,34 +64,13 @@ class MemoryFile(object):
         self.close()
 
 
-class MemoryFS(object):
-    def __init__(self, parent=None):
-        self.children = {}
-        if parent is None:
-            parent = self
-        self.parent = parent
-
+class MemoryFS(MemoryFSNode):
     def _split_whole_path(self, path):
         split = collections.deque()
         while path != '':
             path, tail = os.path.split(path)
             split.appendleft(tail)
         return split
-
-    def get_node(self, split_path):
-        it = iter(split_path)
-        try:
-            name = next(it)
-        except StopIteration:
-            return self
-
-        if name == os.path.curdir:
-            node = self
-        elif name == os.path.pardir:
-            node = self.parent
-        else:
-            node = self.children[name]
-        return node.get_node(it)
 
     def mkdir(self, path):
         split_path = self._split_whole_path(path)
