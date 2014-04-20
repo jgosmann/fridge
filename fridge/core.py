@@ -1,7 +1,8 @@
 import errno
 import os.path
 
-from fridge.cas import ContentAddressableStorage, FileSystem
+from fridge.cas import ContentAddressableStorage
+import fridge.fs
 
 
 class SnapshotItem(object):
@@ -27,7 +28,7 @@ class SnapshotItem(object):
 
 class FridgeCore(object):
     def __init__(
-            self, path, fs=FileSystem(), cas_factory=ContentAddressableStorage):
+            self, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
         self._path = path
         self._fs = fs
         self._blobs = cas_factory(os.path.join(path, '.fridge', 'blobs'), fs)
@@ -35,7 +36,7 @@ class FridgeCore(object):
             path, '.fridge', 'snapshots'), fs)
 
     @classmethod
-    def init(cls, path, fs=FileSystem(), cas_factory=ContentAddressableStorage):
+    def init(cls, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
         return cls(path, fs, cas_factory)
 

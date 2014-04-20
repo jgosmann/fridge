@@ -3,27 +3,11 @@ import hashlib
 import os
 import os.path
 
-
-# FIXME move to another module
-class FileSystem(object):
-    def mkdir(self, path):
-        os.mkdir(path)
-
-    def makedirs(self, path):
-        os.makedirs(path)
-
-    def rename(self, src, dest):
-        os.rename(src, dest)
-
-    def symlink(self, src, link_name):
-        os.symlink(src, link_name)
-
-    def open(self, path, mode='r'):
-        return open(path, mode)
+import fridge.fs
 
 
 class ContentAddressableStorage(object):
-    def __init__(self, root, fs=FileSystem()):
+    def __init__(self, root, fs=fridge.fs):
         self._root = root
         self._fs = fs
 
