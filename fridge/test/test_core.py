@@ -45,8 +45,6 @@ def test_snapshot_item_serialization_roundtrip():
     assert a == b
 
 
-
-
 class TestFridgeCore(object):
     def _create_snapshot(self):
         return [
