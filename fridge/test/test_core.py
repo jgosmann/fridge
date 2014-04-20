@@ -76,6 +76,16 @@ class TestFridgeCore(object):
         fridge = FridgeCore(os.curdir, fs)
         assert s == fridge.read_snapshot(key)
 
+    def test_writing_two_snapshots(self, fs):
+        s1 = self._create_snapshot()
+        s2 = [SnapshotItem('key', 'xyz')]
+
+        fridge = FridgeCore.init(os.curdir, fs)
+        key1 = fridge.add_snapshot(s1)
+        key2 = fridge.add_snapshot(s2)
+        assert s1 == fridge.read_snapshot(key1)
+        assert s2 == fridge.read_snapshot(key2)
+
     def test_setting_and_getting_head(self, fs):
         fridge = FridgeCore.init(os.curdir, fs)
         fridge.set_head(u'ab12cd')
