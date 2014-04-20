@@ -45,12 +45,22 @@ def test_snapshot_item_serialization_roundtrip():
     assert a == b
 
 
+
+
 class TestFridgeCore(object):
     def _create_snapshot(self):
         return [
             SnapshotItem(checksum='a1b2', path='a'),
             SnapshotItem(checksum='cd34', path='b')
         ]
+
+    def test_snapshot_roundtrip(self):
+        snapshot = [
+            SnapshotItem('key1', ' \n\t/weird path \n'),
+            SnapshotItem('key2', '\n another path')]
+        serialized = FridgeCore.serialize_snapshot(snapshot)
+        parsed = FridgeCore.parse_snapshot(serialized)
+        assert snapshot == parsed
 
     def test_add_blob(self, cas_factory, fridge):
         fridge.add_blob('path')

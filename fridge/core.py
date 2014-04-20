@@ -49,17 +49,20 @@ class FridgeCore(object):
     def add_blob(self, path):
         return self._blobs.store(path)
 
+    @staticmethod
+    def serialize_snapshot(snapshot):
+        return u'\n'.join(item.serialize() for item in snapshot)
+
     def add_snapshot(self, snapshot):
-        data = u'\n'.join(item.serialize() for item in snapshot)
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
-            f.write(data)
+            f.write(self.serialize_snapshot(snapshot))
         return self._snapshots.store(tmp_file)
         # FIXME should delete tmp_file (becomes a symlink and might overwrite
         # original file
 
-    # TODO test this function
-    def parse_snapshot(self, serialized_snapshot):
+    @staticmethod
+    def parse_snapshot(serialized_snapshot):
         return [SnapshotItem.parse(line)
                 for line in serialized_snapshot.split('\n')]
 
