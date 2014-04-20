@@ -26,9 +26,11 @@ class CasMockFactory(object):
 def cas_factory():
     return CasMockFactory()
 
+
 @pytest.fixture
 def fs():
     return MemoryFS()
+
 
 @pytest.fixture
 def fridge(fs, cas_factory):
