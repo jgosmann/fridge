@@ -56,6 +56,6 @@ class ContentAddressableStorage(object):
         with self._fs.open(path, 'rb') as f:
             buf = b'\0'
             while buf != b'':
-                buf = f.read(1024 * 1024)  # TODO which read size to use?
+                buf = f.read(4096)  # 4KiB is the block size of most HDD
                 h.update(buf)
         return h.hexdigest()
