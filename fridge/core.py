@@ -75,8 +75,9 @@ class FridgeCore(object):
         try:
             self._fs.symlink(source_path, path)
         except OSError as err:
-            if err.errno == errno.EEXIST:
-                if not self._fs.samefile(source_path, path):
-                    pass  # FIXME Raise exception.
+            is_checked_out = err.errno == errno.EEXIST and \
+                self._fs.samefile(source_path, path)
+            if is_checked_out:
+                pass
             else:
                 raise

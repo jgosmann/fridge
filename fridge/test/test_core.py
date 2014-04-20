@@ -1,3 +1,4 @@
+import errno
 import os.path
 
 from mock import MagicMock
@@ -63,7 +64,6 @@ class TestFridgeCore(object):
         fridge = FridgeCore(os.curdir, fs)
         assert fridge.get_head() == u'ab12cd'
 
-    # TODO test file exists, two cases: same and not same
     def test_checkout_blob(self, fs, cas_factory, fridge):
         with fs.open('mockfile', 'w') as f:
             f.write(u'content')
@@ -71,3 +71,22 @@ class TestFridgeCore(object):
         fridge.checkout_blob('key', 'target')
         assert fs.get_node(
             ['mockfile']).content == fs.get_node(['target']).content
+
+    def test_checkout_blob_on_checkedout(self, fs, cas_factory, fridge):
+        with fs.open('mockfile', 'w') as f:
+            f.write(u'content')
+        fs.symlink('mockfile', 'target')
+        cas_factory['blobs'].get_path.return_value = 'mockfile'
+        fridge.checkout_blob('key', 'target')
+        assert fs.get_node(
+            ['mockfile']).content == fs.get_node(['target']).content
+
+    def test_checkout_blob_on_otherfile(self, fs, cas_factory, fridge):
+        with fs.open('mockfile', 'w') as f:
+            f.write(u'content')
+        with fs.open('target', 'w') as f:
+            f.write(u'otherfile')
+        cas_factory['blobs'].get_path.return_value = 'mockfile'
+        with pytest.raises(OSError) as excinfo:
+            fridge.checkout_blob('key', 'target')
+        assert excinfo.value.errno == errno.EEXIST

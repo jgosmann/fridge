@@ -236,6 +236,8 @@ class MemoryFS(MemoryFSNode):
     def symlink(self, src, link_name):
         """Create a symbolic link.
 
+        Raises :class:`OSError` if `link_name` exists already.
+
         Parameters
         ----------
         src : str
@@ -252,6 +254,9 @@ class MemoryFS(MemoryFSNode):
         dest_split = self._split_whole_path(link_name)
         dest_base = dest_split.pop()
         dest_node = self.get_node(dest_split)
+
+        if dest_base in dest_node.children:
+            raise OSError(errno.EEXIST, 'File exists already.', link_name)
 
         # This is actually a hard link. Might be necessary to change this in
         # the future, but for now it will work as we provide no method which
@@ -297,3 +302,19 @@ class MemoryFS(MemoryFSNode):
         f = node.children[filename]
         f.open(mode)
         return f
+
+    def samefile(self, a, b):
+        """Checks whether two paths point to the same file.
+
+        Parameters
+        ----------
+        a, b : str
+            The two paths
+
+        Returns
+        -------
+        bool
+            ``True`` if both paths are the same file and ``False`` otherwise.
+        """
+        return self.get_node(self._split_whole_path(a)) is self.get_node(
+            self._split_whole_path(b))

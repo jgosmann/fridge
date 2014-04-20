@@ -147,6 +147,21 @@ class TestMemoryFS(object):
         with fs.open(src, 'r') as f:
             assert f.read() == u'dummy content'
 
+    def test_symlink_raises_error_if_file_exists(self):
+        fs = MemoryFS()
+        fs.mkdir('sub1')
+        fs.mkdir('sub2')
+        src = os.path.join('sub1', 'src')
+        dest = os.path.join('sub2', 'dest')
+        with fs.open(src, 'w') as f:
+            f.write(u'dummy')
+        with fs.open(dest, 'w') as f:
+            f.write(u'dummy two')
+        with pytest.raises(OSError) as excinfo:
+            fs.symlink(src, dest)
+        assert excinfo.value.errno == errno.EEXIST
+        assert excinfo.value.filename == dest
+
     @pytest.mark.parametrize('mode', ['w', 'w+', 'a', 'a+'])
     def test_allows_writing_of_files(self, mode):
         fs = MemoryFS()
@@ -180,3 +195,13 @@ class TestMemoryFS(object):
         with fs.open('filename', mode) as f:
             data = f.read()
         assert data == u'dummy content'
+
+    def test_samefile(self):
+        fs = MemoryFS()
+        with fs.open('file1', 'w') as f:
+            f.write(u'file1')
+        with fs.open('file2', 'w') as f:
+            f.write(u'file2')
+        fs.symlink('file1', 'file1b')
+        assert fs.samefile('file1', 'file1b')
+        assert not fs.samefile('file1', 'file2')
