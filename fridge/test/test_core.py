@@ -69,5 +69,5 @@ class TestFridgeCore(object):
             f.write(u'content')
         cas_factory['blobs'].get_path.return_value = 'mockfile'
         fridge.checkout_blob('key', 'target')
-        # FIXME this only works as long as symlinks are actually hard links.
-        assert fs.get_node(['mockfile']) is fs.get_node(['target'])
+        assert fs.get_node(
+            ['mockfile']).content == fs.get_node(['target']).content
