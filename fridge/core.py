@@ -19,7 +19,6 @@ class SnapshotItem(object):
         return 'SnapshotItem(checksum={checksum}, path={path})'.format(
             checksum=repr(self.checksum), path=repr(self.path))
 
-    # TODO test
     @classmethod
     def parse(cls, serialized):
         # FIXME more robust splitting?
