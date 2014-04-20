@@ -76,9 +76,7 @@ class FridgeCore(object):
             self._fs.symlink(source_path, path)
         except OSError as err:
             if err.errno == errno.EEXIST:
-                # FIXME should be call to self._fs, is samefile actually
-                # checking file system level?
-                if not os.path.samefile(source_path, path):
+                if not self._fs.samefile(source_path, path):
                     pass  # FIXME Raise exception.
             else:
                 raise
