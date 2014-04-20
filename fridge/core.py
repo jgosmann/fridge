@@ -1,3 +1,4 @@
+import ast
 import errno
 import os.path
 
@@ -21,8 +22,14 @@ class SnapshotItem(object):
 
     @classmethod
     def parse(cls, serialized):
-        # FIXME more robust splitting?
-        return cls(*serialized.strip().split(' '))
+        # The splitting could be more robust. But the data should have been
+        # written by this program in the correct format anyways. Thus, using
+        # just a space for splitting is good for now.
+        key, path_repr = serialized.split(' ', 1)
+        return cls(key, ast.literal_eval(path_repr))
+
+    def serialize(self):
+        return self.checksum + ' ' + repr(self.path)
 
 
 class FridgeCore(object):
@@ -43,8 +50,7 @@ class FridgeCore(object):
         return self._blobs.store(path)
 
     def add_snapshot(self, snapshot):
-        data = u'\n'.join(
-            u'{0} {1}'.format(item.checksum, item.path) for item in snapshot)
+        data = u'\n'.join(item.serialize() for item in snapshot)
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(data)

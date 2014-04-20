@@ -37,9 +37,12 @@ def fridge(fs, cas_factory):
     return FridgeCore.init(os.curdir, fs, cas_factory)
 
 
-def test_parsing_snapshot_item():
-    si = SnapshotItem.parse('key path\n')
-    assert si == SnapshotItem('key', 'path')
+def test_snapshot_item_serialization_roundtrip():
+    path = '  some \n /weird \t path '
+    a = SnapshotItem('key', path)
+    ser = a.serialize()
+    b = SnapshotItem.parse(ser)
+    assert a == b
 
 
 class TestFridgeCore(object):
