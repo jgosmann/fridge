@@ -55,6 +55,8 @@ class FridgeCore(object):
         with self._fs.open(tmp_file, 'w') as f:
             f.write(data)
         return self._snapshots.store(tmp_file)
+        # FIXME should delete tmp_file (becomes a symlink and might overwrite
+        # original file
 
     # TODO test this function
     def parse_snapshot(self, serialized_snapshot):
