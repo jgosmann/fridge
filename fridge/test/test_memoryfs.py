@@ -205,3 +205,14 @@ class TestMemoryFS(object):
         fs.symlink('file1', 'file1b')
         assert fs.samefile('file1', 'file1b')
         assert not fs.samefile('file1', 'file2')
+
+    def test_unlink(self):
+        fs = MemoryFS()
+        with fs.open('file', 'w') as f:
+            f.write(u'xyz')
+        fs.unlink('file')
+        with pytest.raises(OSError) as excinfo:
+            with fs.open('file'):
+                pass
+        assert excinfo.value.errno == errno.ENOENT
+        assert excinfo.value.filename == 'file'

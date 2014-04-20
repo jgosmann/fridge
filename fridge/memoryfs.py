@@ -299,7 +299,10 @@ class MemoryFS(MemoryFSNode):
         create = 'w' in mode or ('a' in mode and filename not in node.children)
         if create:
             node.children[filename] = MemoryFile()
-        f = node.children[filename]
+        try:
+            f = node.children[filename]
+        except KeyError:
+            raise OSError(errno.ENOENT, 'No such file or directory.', path)
         f.open(mode)
         return f
 
@@ -315,6 +318,29 @@ class MemoryFS(MemoryFSNode):
         -------
         bool
             ``True`` if both paths are the same file and ``False`` otherwise.
+
+        See also
+        --------
+        os.path.samefile
         """
         return self.get_node(self._split_whole_path(a)) is self.get_node(
             self._split_whole_path(b))
+
+    def unlink(self, path):
+        """Removes a file.
+
+        Will raise :class:`OSError` if `path` is a file.
+
+        Parameters
+        ----------
+        path : str
+            Path to the file to delete.
+
+        See also
+        --------
+        os.unlink, os.remove
+        """
+        split_path = self._split_whole_path(path)
+        filename = split_path.pop()
+        node = self.get_node(split_path)
+        del node.children[filename]
