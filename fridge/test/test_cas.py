@@ -25,5 +25,13 @@ class TestContentAddressableStorage(object):
             content = f.read()
         assert content == u'dummy content'
 
+    def test_file_can_still_be_accessed_after_store(self):
+        fs = MemoryFS()
+        cas = self.create_cas(fs)
+        with fs.open('testfile', 'w') as f:
+            f.write(u'dummy content')
+        cas.store('testfile')
+        with fs.open('testfile', 'r') as f:
+            assert f.read() == u'dummy content'
+
     # TODO test write protection
-    # TODO do symlinking (test whether file can still be accessed)
