@@ -17,5 +17,6 @@ setup(
     author='Jan Gosmann',
     author_email='jan@hyper-world.de',
     packages=['fridge'],
+    scripts=['bin/fridge'],
     provides=['fridge'],
 )
