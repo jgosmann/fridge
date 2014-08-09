@@ -10,7 +10,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # please see the online documentation at vagrantup.com.
 
   # Every Vagrant virtual environment requires a box to build off of.
-  config.vm.box = "base"
+  config.vm.box = "win8"
+  config.vm.box_url = "./win8.box"
+  config.vm.communicator = "winrm"
+  config.vm.network "forwarded_port", host: 2222, guest: 22
+  config.vm.network "forwarded_port", host: 3389, guest: 3389
+  config.vm.boot_timeout = 600
+
+  config.vm.provision :puppet do |puppet|
+    puppet.manifests_path = "puppet/manifests"
+    puppet.options = ['--verbose']
+  end
+
+  config.vm.synced_folder ".", "/vagrant", type: "rsync", rsync__args: ['-r', '-u', '-t', '--delete', '-z'], rsync__exclude: ['.*', '*.pyc', '__pycache__', '*.box', 'systemtests/test-output']
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs
