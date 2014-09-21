@@ -13,7 +13,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "win8"
   config.vm.box_url = "./win8.box"
   config.vm.communicator = "winrm"
-  config.vm.network "forwarded_port", host: 2222, guest: 22
   config.vm.network "forwarded_port", host: 3389, guest: 3389
   config.vm.boot_timeout = 600
 
