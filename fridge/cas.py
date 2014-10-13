@@ -4,6 +4,7 @@ import errno
 import hashlib
 import os
 import os.path
+import stat
 
 import fridge.fs
 
@@ -51,8 +52,13 @@ class ContentAddressableStorage(object):
             if err.errno != errno.EEXIST:
                 raise
 
+        mode = stat.S_IMODE(self._fs.stat(filepath).st_mode)
         self._fs.rename(filepath, target_path)
+        # FIXME Test doesn't add permissions
+        store_mode = mode & (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+        self._fs.chmod(target_path, store_mode)
         self._fs.copy(target_path, filepath)
+        self._fs.chmod(filepath, mode)
         return key
 
     def get_path(self, key):

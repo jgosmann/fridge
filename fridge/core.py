@@ -1,5 +1,6 @@
 import ast
 import os.path
+import stat
 
 from fridge.cas import ContentAddressableStorage
 import fridge.fs
@@ -83,3 +84,4 @@ class FridgeCore(object):
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
         self._fs.copy(source_path, path)
+        # FIXME restore file mode
