@@ -376,7 +376,11 @@ class MemoryFS(MemoryFSNode):
             f = node.children[filename]
         except KeyError:
             raise OSError(errno.ENOENT, 'No such file or directory.', path)
-        f.open(mode)
+        try:
+            f.open(mode)
+        except OSError as e:
+            e.filename = path
+            raise
         return f
 
     def samefile(self, a, b):
