@@ -232,6 +232,13 @@ class MemoryFS(MemoryFSNode):
 
         dest_node.children[dest_base] = copied
 
+    def exists(self, path):
+        try:
+            self.get_node(self._split_whole_path(path))
+        except KeyError:
+            return False
+        return True
+
     def rename(self, src, dest):
         """Renames a file or directory.
 

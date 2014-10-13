@@ -96,6 +96,16 @@ class TestMemoryFS(object):
         with fs.open(dest, 'r') as f:
             assert f.read() == u'dummy'
 
+    def test_exists(self):
+        fs = MemoryFS()
+        fs.mkdir('dir')
+        with fs.open('file', 'w') as f:
+            f.write(u'foo')
+
+        assert fs.exists('dir')
+        assert fs.exists('file')
+        assert not fs.exists('missing')
+
     def test_mkdir(self):
         fs = MemoryFS()
         fs.mkdir('test')
