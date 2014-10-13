@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/jgosmann/fridge.svg?branch=master)](https://travis-ci.org/jgosmann/fridge)
+[![Coverage Status](https://img.shields.io/coveralls/jgosmann/fridge.svg)](https://coveralls.io/r/jgosmann/fridge?branch=master)
+
 Thinking, playing around and researching I came to the conclusion that I first
 of all need a content addressable file system (CAFS) tool like
 [boar](http://www.boarvcs.com/) for scientific data. Then I might build on that
