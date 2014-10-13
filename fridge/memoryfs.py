@@ -415,3 +415,18 @@ class MemoryFS(MemoryFSNode):
         filename = split_path.pop()
         node = self.get_node(split_path)
         del node.children[filename]
+
+    def walk(self, path):
+        # TODO documentation
+        stack = [(path, self.get_node(self._split_whole_path(path)))]
+        while len(stack) > 0:
+            node_path, node = stack.pop()
+            dirnames = []
+            filenames = []
+            for name, child in node.children.items():
+                if isinstance(child, MemoryFile):
+                    filenames.append(name)
+                else:
+                    dirnames.append(name)
+                    stack.append((os.path.join(node_path, name), child))
+            yield node_path, dirnames, filenames

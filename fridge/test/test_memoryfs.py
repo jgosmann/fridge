@@ -286,3 +286,13 @@ class TestMemoryFS(object):
                 pass
         assert excinfo.value.errno == errno.ENOENT
         assert excinfo.value.filename == 'file'
+
+    def test_walk(self):
+        fs = MemoryFS()
+        with fs.open('file', 'w') as f:
+            f.write(u'foo')
+        fs.mkdir('dir')
+        with fs.open('dir/file2', 'w') as f:
+            f.write(u'foo')
+        assert [item for item in fs.walk('.')] == [
+            ('.', ['dir'], ['file']), ('./dir', [], ['file2'])]
