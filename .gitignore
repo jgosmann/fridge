@@ -1,4 +1,12 @@
 *.egg-info
 *.pyc
+.coverage
 .ropeproject
+.tox
+.vagrant
 __pycache__
+dist
+doc/_build
+MANIFEST
+systemtests/test-output
+win8.box

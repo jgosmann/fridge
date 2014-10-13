@@ -1,8 +1,15 @@
 language: python
 python:
-    - "2.6"
     - "2.7"
-    - "3.2"
     - "3.3"
-install: pip install -r requirements.txt
-script: py.test
+    - "3.4"
+install:
+    - pip install -r requirements.txt
+    - pip install coveralls
+    - pip install pytest-cov
+script:
+    - pip install -e .
+    - py.test --cov fridge fridge
+    - py.test systemtests
+after_success:
+    coveralls

@@ -1,0 +1,48 @@
+#!/usr/bin/env python
+
+import argparse
+import os
+import os.path
+import sys
+
+from fridge.core import FridgeCore, SnapshotItem
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+
+    # TODO add description and usage help
+    parser = argparse.ArgumentParser()
+    parser.add_argument('cmd', nargs=1, type=str)
+    # FIXME what happens with an invalid cmd?
+    parser.add_argument('argv', nargs=argparse.REMAINDER, type=str)
+    args = parser.parse_args(argv)
+
+    if 'init' in args.cmd:
+        FridgeCore.init(os.curdir)
+    elif 'commit' in args.cmd:
+        fridge = FridgeCore(os.curdir)
+        # FIXME repo dir shouldn't be fixed
+        # FIXME what to do about symlinks?
+        # TODO about errors?
+        snapshot = []
+        for dirpath, dirnames, filenames in os.walk('.'):
+            if '.fridge' in dirnames:
+                dirnames.remove('.fridge')
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                checksum = fridge.add_blob(path)
+                # FIXME file size, c and m time, access rights?
+                snapshot.append(SnapshotItem(checksum, path))
+        checksum = fridge.add_snapshot(snapshot)
+        fridge.set_head(checksum)
+    elif 'checkout' in args.cmd:
+        fridge = FridgeCore(os.curdir)
+        head = fridge.get_head()
+        snapshot = fridge.read_snapshot(head)
+        for item in snapshot:
+            fridge.checkout_blob(item.checksum, item.path)
+
+if __name__ == '__main__':
+    sys.exit(main())
