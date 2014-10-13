@@ -5,7 +5,7 @@ from mock import MagicMock
 import pytest
 
 from fridge.memoryfs import MemoryFS
-from fridge.core import Fridge, FridgeCore, SnapshotItem
+from fridge.core import DataObject, Fridge, FridgeCore, SnapshotItem, Stat
 
 
 class CasMockFactory(object):
@@ -23,15 +23,12 @@ class CasMockFactory(object):
 
 
 def create_file_status():
-    status = MagicMock()
-    status.st_mode = (
-        stat.S_IFREG |
-        stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
-        stat.S_IROTH | stat.S_IWOTH)
-    status.st_size = 123
-    status.st_atime = 4.56
-    status.st_mtime = 7.89
-    return status
+    return Stat(
+        st_mode=(
+            stat.S_IFREG |
+            stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
+            stat.S_IROTH | stat.S_IWOTH),
+        st_size=123, st_atime=4.56, st_mtime=7.89)
 
 
 @pytest.fixture
@@ -47,6 +44,64 @@ def fs():
 @pytest.fixture
 def fridge_core(fs, cas_factory):
     return FridgeCore.init(os.curdir, fs, cas_factory)
+
+
+class TestDataObject(object):
+    # pylint: disable=no-member
+
+    class A(DataObject):
+        __slots__ = ['a', 'b']
+
+    class LikeA(DataObject):
+        __slots__ = ['a', 'b']
+
+    class B(DataObject):
+        __slots__ = 'b'
+
+    def test_raises_on_too_many_args(self):
+        with pytest.raises(TypeError):
+            self.A(1, 2, 3)
+
+    def test_raises_on_too_few_args(self):
+        with pytest.raises(TypeError):
+            self.A(1)
+
+    def test_accepts_positional_args(self):
+        a = self.A(1, 2)
+        assert a.a == 1 and a.b == 2
+
+    def test_raises_on_wrong_keyword_arg(self):
+        with pytest.raises(TypeError):
+            self.A(1, 2, z=3)
+        with pytest.raises(TypeError):
+            self.A(1, z=3)
+
+    def test_raises_on_duplicate_arg(self):
+        with pytest.raises(TypeError):
+            self.A(1, 2, a=1)
+        with pytest.raises(TypeError):
+            self.A(1, a=1)
+
+    def test_accepts_keyword_args(self):
+        a = self.A(b=1, a=2)
+        assert a.b == 1 and a.a == 2
+
+    def test_accepts_mixed_args(self):
+        a = self.A(1, b=2)
+        assert a.a == 1 and a.b == 2
+
+    def test_equality(self):
+        a1 = self.A(1, 2)
+        a2 = self.A(1, 2)
+        a3 = self.LikeA(1, 2)
+        different = self.B(2)
+        different2 = self.A(2, 2)
+
+        assert a1 == a1
+        assert a1 == a2 and a2 == a1
+        assert a1 == a3 and a3 == a1
+        assert a1 != different and different != a1
+        assert a1 != different2 and different2 != a1
 
 
 def test_snapshot_item_serialization_roundtrip():
@@ -152,6 +207,7 @@ class TestFridge(object):
         fridge = Fridge(core_mock, fs)
         fridge.checkout()
 
+        # pylint: disable=no-member
         core_mock.get_head.assert_called_once_with()
         core_mock.read_snapshot.assert_called_once_with('headhash')
         core_mock.checkout_blob.assert_called_once_with('hash', 'file')

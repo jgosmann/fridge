@@ -1,5 +1,4 @@
 import ast
-from collections import namedtuple
 import os.path
 import re
 import stat
@@ -8,35 +7,78 @@ from fridge.cas import ContentAddressableStorage
 import fridge.fs
 
 
-class SnapshotItem(object):
+class DataObject(object):
+    __slots__ = []
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > len(self.__slots__):
+            raise TypeError("Takes {} arguments, but got {}.".format(
+                len(self.__slots__), len(args)))
+
+        for i, name in enumerate(self.__slots__):
+            if i < len(args):
+                if name in kwargs:
+                    raise TypeError("Multiple arguments for {}.".format(name))
+                setattr(self, name, args[i])
+            else:
+                if name not in kwargs:
+                    raise TypeError("Argument {} missing.".format(name))
+                setattr(self, name, kwargs.pop(name))
+
+        if len(kwargs) > 0:
+            raise TypeError("Unknown keyword argument {}.", kwargs.keys()[0])
+
+    def __eq__(self, other):
+        if self.__slots__ != other.__slots__:
+            return False
+
+        for name in self.__slots__:
+            try:
+                if getattr(self, name) != getattr(other, name):
+                    return False
+            except AttributeError:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return '{cls}({args})'.format(
+            cls=self.__class__.__name__,
+            args=', '.join('{name}={value!r}'.format(
+                name=n, value=getattr(self, n)) for n in self.__slots__))
+
+
+class Serializable(object):
+    @classmethod
+    def parse(cls, serialized):
+        raise NotImplementedError()
+
+    def serialize(self):
+        raise NotImplementedError()
+
+
+class Stat(DataObject):
+    __slots__ = ['st_mode', 'st_size', 'st_atime', 'st_mtime']
+
+
+class SnapshotItem(DataObject, Serializable):
     __slots__ = ['checksum', 'path', 'status']
 
     _SPLIT_REGEX = re.compile(r'\s+')
-    RestoredStat = namedtuple(
-        'RestoredStat', ['st_mode', 'st_size', 'st_atime', 'st_mtime'])
-
-    def __init__(self, checksum, path, status):
-        self.checksum = checksum
-        self.path = path
-        self.status = status
-
-    def __eq__(self, other):
-        return self.checksum == other.checksum and self.path == other.path
-
-    def __repr__(self):
-        return 'SnapshotItem(checksum={checksum}, path={path})'.format(
-            checksum=repr(self.checksum), path=repr(self.path))
 
     @classmethod
     def parse(cls, serialized):
         key, mode, size, atime, mtime, path_repr = cls._SPLIT_REGEX.split(
             serialized, 5)
-        status = cls.RestoredStat(
+        status = Stat(
             st_mode=int(mode, 8) | stat.S_IFREG,
             st_size=int(size), st_atime=float(atime), st_mtime=float(mtime))
         return cls(key, ast.literal_eval(path_repr), status)
 
     def serialize(self):
+        # pylint: disable=no-member
         return ('{key:s} {mode:0>4o} {size:d} {atime:.3f} {mtime:.3f} ' +
                 '{path!r}').format(
             key=self.checksum,
