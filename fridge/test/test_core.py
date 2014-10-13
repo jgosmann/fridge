@@ -5,7 +5,8 @@ from mock import MagicMock
 import pytest
 
 from fridge.memoryfs import MemoryFS
-from fridge.core import DataObject, Fridge, FridgeCore, SnapshotItem, Stat
+from fridge.core import (DataObject, Commit, Fridge, FridgeCore, SnapshotItem, 
+    Stat)
 
 
 class CasMockFactory(object):
@@ -110,6 +111,13 @@ def test_snapshot_item_serialization_roundtrip():
     a = SnapshotItem('key', path, status)
     ser = a.serialize()
     b = SnapshotItem.parse(ser)
+    assert a == b
+
+
+def test_commit_serialization_roundtrip():
+    a = Commit(123.45, 'snapshot', 'message', None)
+    ser = a.serialize()
+    b = Commit.parse(ser)
     assert a == b
 
 

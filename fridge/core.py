@@ -51,6 +51,9 @@ class DataObject(object):
 
 
 class Serializable(object):
+    class DeserializationError(RuntimeError):
+        pass
+
     @classmethod
     def parse(cls, serialized):
         raise NotImplementedError()
@@ -87,6 +90,45 @@ class SnapshotItem(DataObject, Serializable):
             atime=self.status.st_atime,
             mtime=self.status.st_mtime,
             path=self.path)
+
+
+class Commit(DataObject, Serializable):
+    __slots__ = ['timestamp', 'snapshot', 'message', 'parent']
+
+    _NEWLINE_REGEX = re.compile(r'\r*\n\r*')
+    _SPLIT_MESSAGE_REGEX = re.compile('(?:{}){{2}}'.format(
+        _NEWLINE_REGEX.pattern))
+    _SPLIT_REGEX = re.compile(r'\s+')
+
+    @classmethod
+    def parse(cls, serialized):
+        serialized, message = cls._SPLIT_MESSAGE_REGEX.split(serialized, 1)
+        lines = cls._NEWLINE_REGEX.split(serialized)
+        kwargs = {'message': message}
+        for line in lines:
+            split = cls._SPLIT_REGEX.split(line.strip(), 1)
+            if len(split) > 1:
+                kw, value = split
+            else:
+                kw = split[0]
+                value = None
+            if kw in kwargs:
+                raise cls.DeserializationError("Duplicate key.")
+            if kw == 'timestamp':
+                value = float(value)
+            kwargs[kw] = value
+        try:
+            return cls(**kwargs)
+        except TypeError as err:
+            raise cls.DeserializationError(err.message)
+
+    def serialize(self):
+        # pylint: disable=no-member
+        return (
+            'timestamp {timestamp:.3f}\nparent {parent}\n' +
+            'snapshot {snapshot}\n\n{message}').format(
+                timestamp=self.timestamp, parent=self.parent or '',
+                snapshot=self.snapshot, message=self.message)
 
 
 class FridgeCore(object):
@@ -148,7 +190,7 @@ class Fridge(object):
         self._core = fridge_core
         self._fs = fs
 
-    def commit(self):
+    def commit(self, message=""):
         snapshot = []
         for dirpath, dirnames, filenames in self._fs.walk('.'):
             if '.fridge' in dirnames:
