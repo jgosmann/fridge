@@ -5,8 +5,8 @@ from mock import MagicMock
 import pytest
 
 from fridge.memoryfs import MemoryFS
-from fridge.core import (DataObject, Commit, Fridge, FridgeCore, SnapshotItem, 
-    Stat)
+from fridge.core import (
+    DataObject, Commit, Fridge, FridgeCore, SnapshotItem, Stat)
 
 
 class CasMockFactory(object):
@@ -194,20 +194,26 @@ class TestFridge(object):
             f.write(u'content')
         core_mock = MagicMock()
         core_mock.add_blob.return_value = 'hash'
-        core_mock.add_snapshot.return_value = 'hash2'
+        core_mock.add_snapshot.return_value = 'snapshot_hash'
+        core_mock.add_commit.return_value = 'commit_hash'
         fridge = Fridge(core_mock, fs)
-        fridge.commit()
+        fridge.commit(message='msg')
 
         call_path = os.path.join(os.curdir, 'mockfile')
         core_mock.add_blob.assert_called_once_with(call_path)
         core_mock.add_snapshot.assert_called_once_with([SnapshotItem(
             'hash', call_path, fs.stat('mockfile'))])
-        core_mock.set_head.assert_called_once('hash2')
+        core_mock.add_commit.assert_called_once_with(
+            'snapshot_hash', 'msg')
+        core_mock.set_head.assert_called_once('commit_hash')
 
     def test_checkout(self):
         fs = MagicMock()
         core_mock = MagicMock()
         core_mock.get_head.return_value = 'headhash'
+        core_mock.read_commit.return_value = Commit(
+            timestamp=1.23, snapshot='snapshot_hash', message='msg',
+            parent=None)
         status = create_file_status()
         core_mock.read_snapshot.return_value = [
             SnapshotItem('hash', 'file', status)]
@@ -217,7 +223,8 @@ class TestFridge(object):
 
         # pylint: disable=no-member
         core_mock.get_head.assert_called_once_with()
-        core_mock.read_snapshot.assert_called_once_with('headhash')
+        core_mock.read_commit.assert_called_once_with('headhash')
+        core_mock.read_snapshot.assert_called_once_with('snapshot_hash')
         core_mock.checkout_blob.assert_called_once_with('hash', 'file')
         fs.chmod.assert_called_once_with('file', stat.S_IMODE(status.st_mode))
         fs.utime.assert_called_once_with(

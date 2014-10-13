@@ -2,6 +2,7 @@ import ast
 import os.path
 import re
 import stat
+import time
 
 from fridge.cas import ContentAddressableStorage
 import fridge.fs
@@ -139,10 +140,14 @@ class FridgeCore(object):
         self._blobs = cas_factory(os.path.join(path, '.fridge', 'blobs'), fs)
         self._snapshots = cas_factory(os.path.join(
             path, '.fridge', 'snapshots'), fs)
+        self._commits = cas_factory(os.path.join(
+            path, '.fridge', 'commits'), fs)
 
     @classmethod
     def init(cls, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
+        with fs.open(os.path.join(path, '.fridge', 'head'), 'w'):
+            pass
         return cls(path, fs, cas_factory)
 
     def add_blob(self, path):
@@ -161,6 +166,17 @@ class FridgeCore(object):
         finally:
             self._fs.unlink(tmp_file)
 
+    def add_commit(self, snapshot_key, message):
+        # FIXME ensure UTC time
+        c = Commit(time.time(), snapshot_key, message, self.get_head())
+        tmp_file = os.path.join(self._path, '.fridge', 'tmp')
+        with self._fs.open(tmp_file, 'w') as f:
+            f.write(c.serialize())
+        try:
+            return self._commits.store(tmp_file)
+        finally:
+            self._fs.unlink(tmp_file)
+
     @staticmethod
     def parse_snapshot(serialized_snapshot):
         return [SnapshotItem.parse(line)
@@ -169,6 +185,10 @@ class FridgeCore(object):
     def read_snapshot(self, key):
         with self._fs.open(self._snapshots.get_path(key)) as f:
             return self.parse_snapshot(f.read())
+
+    def read_commit(self, key):
+        with self._fs.open(self._commits.get_path(key)) as f:
+            return Commit.parse(f.read())
 
     def set_head(self, key):
         path = os.path.join(self._path, '.fridge', 'head')
@@ -200,14 +220,17 @@ class Fridge(object):
                 checksum = self._core.add_blob(path)
                 snapshot.append(SnapshotItem(
                     checksum, path, self._fs.stat(path)))
-        checksum = self._core.add_snapshot(snapshot)
-        self._core.set_head(checksum)
+        snapshot_hash = self._core.add_snapshot(snapshot)
+        commit_hash = self._core.add_commit(snapshot_hash, message)
+        self._core.set_head(commit_hash)
 
     def checkout(self):
         head = self._core.get_head()
-        snapshot = self._core.read_snapshot(head)
+        commit = self._core.read_commit(head)
+        snapshot = self._core.read_snapshot(commit.snapshot)
         for item in snapshot:
             self._core.checkout_blob(item.checksum, item.path)
             self._fs.chmod(item.path, stat.S_IMODE(item.status.st_mode))
+            # FIXME ensure UTC
             self._fs.utime(
                 item.path, (item.status.st_atime, item.status.st_mtime))
