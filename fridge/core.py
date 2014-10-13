@@ -99,3 +99,28 @@ class FridgeCore(object):
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
         self._fs.copy(source_path, path)
+
+
+class Fridge(object):
+    def __init__(self, fridge_core):
+        self._core = fridge_core
+
+    def commit(self):
+        snapshot = []
+        for dirpath, dirnames, filenames in os.walk('.'):
+            if '.fridge' in dirnames:
+                dirnames.remove('.fridge')
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                checksum = self._core.add_blob(path)
+                snapshot.append(SnapshotItem(checksum, path, os.stat(path)))
+        checksum = self._core.add_snapshot(snapshot)
+        self._core.set_head(checksum)
+
+    def checkout(self):
+        head = self._core.get_head()
+        snapshot = self._core.read_snapshot(head)
+        for item in snapshot:
+            self._core.checkout_blob(item.checksum, item.path)
+            os.chmod(item.path, stat.S_IMODE(item.status.st_mode))
+            os.utime(item.path, (item.status.st_atime, item.status.st_mtime))

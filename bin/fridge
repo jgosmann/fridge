@@ -6,7 +6,7 @@ import os.path
 import stat
 import sys
 
-from fridge.core import FridgeCore, SnapshotItem
+from fridge.core import Fridge, FridgeCore, SnapshotItem
 
 
 def main(argv=None):
@@ -23,28 +23,14 @@ def main(argv=None):
     if 'init' in args.cmd:
         FridgeCore.init(os.curdir)
     elif 'commit' in args.cmd:
-        fridge = FridgeCore(os.curdir)
+        fridge = Fridge(FridgeCore(os.curdir))
         # FIXME repo dir shouldn't be fixed
         # FIXME what to do about symlinks?
         # TODO about errors?
-        snapshot = []
-        for dirpath, dirnames, filenames in os.walk('.'):
-            if '.fridge' in dirnames:
-                dirnames.remove('.fridge')
-            for filename in filenames:
-                path = os.path.join(dirpath, filename)
-                checksum = fridge.add_blob(path)
-                snapshot.append(SnapshotItem(checksum, path, os.stat(path)))
-        checksum = fridge.add_snapshot(snapshot)
-        fridge.set_head(checksum)
+        fridge.commit()
     elif 'checkout' in args.cmd:
-        fridge = FridgeCore(os.curdir)
-        head = fridge.get_head()
-        snapshot = fridge.read_snapshot(head)
-        for item in snapshot:
-            fridge.checkout_blob(item.checksum, item.path)
-            os.chmod(item.path, stat.S_IMODE(item.status.st_mode))
-            os.utime(item.path, (item.status.st_atime, item.status.st_mtime))
+        fridge = Fridge(FridgeCore(os.curdir))
+        fridge.checkout()
 
 if __name__ == '__main__':
     sys.exit(main())
