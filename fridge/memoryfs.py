@@ -5,6 +5,12 @@ import collections
 import errno
 from io import BytesIO, StringIO
 import os
+import stat as st
+
+
+class Stat(object):
+    def __init__(self):
+        self.st_mode = 0
 
 
 class MemoryFSNode(object):
@@ -12,6 +18,8 @@ class MemoryFSNode(object):
 
     Parameters
     ----------
+    stat : :class:`Stat`
+        Status flags for the node.
     parent : :class:`MemoryFSNode`, optional
         Parent of the node. Will be set to the node itself, if ``None``.
 
@@ -23,9 +31,15 @@ class MemoryFSNode(object):
         The children of the node.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, stat=None):
+        if stat is None:
+            stat = Stat()
+            stat.st_mode = (
+                st.S_IRWXU | st.S_IRGRP | st.S_IXGRP |
+                st.S_IROTH | st.S_IXOTH | st.S_IFDIR)
         if parent is None:
             parent = self
+        self.status = stat
         self.parent = parent
         self.children = {}
 
@@ -71,7 +85,11 @@ class MemoryFile(MemoryFSNode):
         Content of the file.
     """
     def __init__(self, parent=None):
-        super(MemoryFile, self).__init__(parent)
+        stat = Stat()
+        stat.st_mode = (
+            st.S_IRUSR | st.S_IWUSR | st.S_IRGRP | st.S_IWGRP |
+            st.S_IROTH | st.S_IWOTH | st.S_IFREG)
+        super(MemoryFile, self).__init__(parent, stat)
         self.content = b''
         self._delegate = None
         self._mode = None
@@ -268,6 +286,9 @@ class MemoryFS(MemoryFSNode):
 
         dest_node.children[dest_base] = src_node.children[src_base]
         del src_node.children[src_base]
+
+    def stat(self, path):
+        return self.get_node(self._split_whole_path(path)).status
 
     def symlink(self, src, link_name):
         """Create a symbolic link.

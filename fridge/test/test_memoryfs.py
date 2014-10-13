@@ -1,5 +1,6 @@
 import errno
 import os
+import stat
 
 import pytest
 
@@ -79,6 +80,25 @@ class TestMemoryFS(object):
         fs = MemoryFS()
         with pytest.raises(KeyError):
             fs.get_node(['nonexistent'])
+
+    def test_default_dir_mode(self):
+        fs = MemoryFS()
+        fs.mkdir('dir')
+        s = fs.stat('dir')
+        assert stat.S_ISDIR(s.st_mode)
+        assert stat.S_IMODE(s.st_mode) == (
+            stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP |
+            stat.S_IROTH | stat.S_IXOTH)
+
+    def test_default_file_mode(self):
+        fs = MemoryFS()
+        with fs.open('file', 'w') as f:
+            f.write(u'foo')
+        s = fs.stat('file')
+        assert stat.S_ISREG(s.st_mode)
+        assert stat.S_IMODE(s.st_mode) == (
+            stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
+            stat.S_IROTH | stat.S_IWOTH)
 
     def test_copy(self):
         fs = MemoryFS()

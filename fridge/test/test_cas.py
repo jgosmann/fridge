@@ -34,4 +34,19 @@ class TestContentAddressableStorage(object):
         with fs.open('testfile', 'r') as f:
             assert f.read() == u'dummy content'
 
+    def test_writing_original_files_keeps_stored_file_unchanged(self):
+        fs = MemoryFS()
+        cas = self.create_cas(fs)
+        with fs.open('testfile', 'w') as f:
+            f.write(u'dummy content')
+        key = cas.store('testfile')
+        del cas  # Close
+
+        with fs.open('testfile', 'w') as f:
+            f.write(u'replaced content')
+        cas = self.create_cas(fs)
+        with fs.open(cas.get_path(key), 'r') as f:
+            content = f.read()
+        assert content == u'dummy content'
+
     # TODO test write protection
