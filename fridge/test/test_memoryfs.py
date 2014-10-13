@@ -100,6 +100,14 @@ class TestMemoryFS(object):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
             stat.S_IROTH | stat.S_IWOTH)
 
+    def test_chmod(self):
+        fs = MemoryFS()
+        fs.mkdir('dir')
+
+        s = stat.S_IRWXU
+        fs.chmod('dir', s)
+        assert fs.stat('dir').st_mode == s
+
     def test_copy(self):
         fs = MemoryFS()
         fs.mkdir('sub1')
