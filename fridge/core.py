@@ -1,5 +1,7 @@
 import ast
+from collections import namedtuple
 import os.path
+import re
 import stat
 
 from fridge.cas import ContentAddressableStorage
@@ -7,11 +9,16 @@ import fridge.fs
 
 
 class SnapshotItem(object):
-    __slots__ = ['checksum', 'path']
+    __slots__ = ['checksum', 'path', 'status']
 
-    def __init__(self, checksum, path):
+    _SPLIT_REGEX = re.compile(r'\s+')
+    RestoredStat = namedtuple(
+        'RestoredStat', ['st_mode', 'st_size', 'st_atime', 'st_mtime'])
+
+    def __init__(self, checksum, path, status):
         self.checksum = checksum
         self.path = path
+        self.status = status
 
     def __eq__(self, other):
         return self.checksum == other.checksum and self.path == other.path
@@ -22,14 +29,22 @@ class SnapshotItem(object):
 
     @classmethod
     def parse(cls, serialized):
-        # The splitting could be more robust. But the data should have been
-        # written by this program in the correct format anyways. Thus, using
-        # just a space for splitting is good for now.
-        key, path_repr = serialized.split(' ', 1)
-        return cls(key, ast.literal_eval(path_repr))
+        key, mode, size, atime, mtime, path_repr = cls._SPLIT_REGEX.split(
+            serialized, 5)
+        status = cls.RestoredStat(
+            st_mode=int(mode, 8) | stat.S_IFREG,
+            st_size=int(size), st_atime=float(atime), st_mtime=float(mtime))
+        return cls(key, ast.literal_eval(path_repr), status)
 
     def serialize(self):
-        return self.checksum + ' ' + repr(self.path)
+        return ('{key:s} {mode:0>4o} {size:d} {atime:.3f} {mtime:.3f} ' +
+                '{path!r}').format(
+            key=self.checksum,
+            mode=stat.S_IMODE(self.status.st_mode),
+            size=self.status.st_size,
+            atime=self.status.st_atime,
+            mtime=self.status.st_mtime,
+            path=self.path)
 
 
 class FridgeCore(object):
@@ -84,4 +99,3 @@ class FridgeCore(object):
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
         self._fs.copy(source_path, path)
-        # FIXME restore file mode

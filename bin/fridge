@@ -3,6 +3,7 @@
 import argparse
 import os
 import os.path
+import stat
 import sys
 
 from fridge.core import FridgeCore, SnapshotItem
@@ -33,8 +34,7 @@ def main(argv=None):
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
                 checksum = fridge.add_blob(path)
-                # FIXME file size, c and m time, access rights?
-                snapshot.append(SnapshotItem(checksum, path))
+                snapshot.append(SnapshotItem(checksum, path, os.stat(path)))
         checksum = fridge.add_snapshot(snapshot)
         fridge.set_head(checksum)
     elif 'checkout' in args.cmd:
@@ -43,6 +43,8 @@ def main(argv=None):
         snapshot = fridge.read_snapshot(head)
         for item in snapshot:
             fridge.checkout_blob(item.checksum, item.path)
+            os.chmod(item.path, stat.S_IMODE(item.status.st_mode))
+            os.utime(item.path, (item.status.st_atime, item.status.st_mtime))
 
 if __name__ == '__main__':
     sys.exit(main())

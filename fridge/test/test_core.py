@@ -1,4 +1,5 @@
 import os.path
+import stat
 
 from mock import MagicMock
 import pytest
@@ -21,6 +22,18 @@ class CasMockFactory(object):
         return self._cas[key]
 
 
+def create_file_status():
+    status = MagicMock()
+    status.st_mode = (
+        stat.S_IFREG |
+        stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
+        stat.S_IROTH | stat.S_IWOTH)
+    status.st_size = 123
+    status.st_atime = 4.56
+    status.st_mtime = 7.89
+    return status
+
+
 @pytest.fixture
 def cas_factory():
     return CasMockFactory()
@@ -38,7 +51,8 @@ def fridge(fs, cas_factory):
 
 def test_snapshot_item_serialization_roundtrip():
     path = '  some \n /weird \t path '
-    a = SnapshotItem('key', path)
+    status = create_file_status()
+    a = SnapshotItem('key', path, status)
     ser = a.serialize()
     b = SnapshotItem.parse(ser)
     assert a == b
@@ -47,14 +61,16 @@ def test_snapshot_item_serialization_roundtrip():
 class TestFridgeCore(object):
     def _create_snapshot(self):
         return [
-            SnapshotItem(checksum='a1b2', path='a'),
-            SnapshotItem(checksum='cd34', path='b')
+            SnapshotItem(
+                checksum='a1b2', path='a', status=create_file_status()),
+            SnapshotItem(
+                checksum='cd34', path='b', status=create_file_status())
         ]
 
     def test_snapshot_roundtrip(self):
         snapshot = [
-            SnapshotItem('key1', ' \n\t/weird path \n'),
-            SnapshotItem('key2', '\n another path')]
+            SnapshotItem('key1', ' \n\t/weird path \n', create_file_status()),
+            SnapshotItem('key2', '\n another path', create_file_status())]
         serialized = FridgeCore.serialize_snapshot(snapshot)
         parsed = FridgeCore.parse_snapshot(serialized)
         assert snapshot == parsed
@@ -75,7 +91,7 @@ class TestFridgeCore(object):
 
     def test_writing_two_snapshots(self, fs):
         s1 = self._create_snapshot()
-        s2 = [SnapshotItem('key', 'xyz')]
+        s2 = [SnapshotItem('key', 'xyz', create_file_status())]
 
         fridge = FridgeCore.init(os.curdir, fs)
         key1 = fridge.add_snapshot(s1)
