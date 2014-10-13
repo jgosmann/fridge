@@ -52,7 +52,7 @@ class ContentAddressableStorage(object):
                 raise
 
         self._fs.rename(filepath, target_path)
-        self._fs.symlink(target_path, filepath)
+        self._fs.copy(target_path, filepath)
         return key
 
     def get_path(self, key):

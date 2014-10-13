@@ -1,7 +1,8 @@
 """Provides the default Python implementation of file system access functions.
 """
-from os import makedirs, mkdir, rename, symlink, unlink
-from os.path import samefile
+from os import makedirs, mkdir, rename, unlink
+from os.path import exists
+from shutil import copy
 try:
     from builtins import open
 except ImportError:

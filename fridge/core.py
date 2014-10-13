@@ -1,5 +1,4 @@
 import ast
-import errno
 import os.path
 
 from fridge.cas import ContentAddressableStorage
@@ -83,12 +82,4 @@ class FridgeCore(object):
 
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
-        try:
-            self._fs.symlink(source_path, path)
-        except OSError as err:
-            is_checked_out = err.errno == errno.EEXIST and \
-                self._fs.samefile(source_path, path)
-            if is_checked_out:
-                pass
-            else:
-                raise
+        self._fs.copy(source_path, path)
