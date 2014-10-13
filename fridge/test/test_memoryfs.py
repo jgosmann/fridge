@@ -264,8 +264,9 @@ class TestMemoryFS(object):
         write_file(fs, 'file')
         fs.mkdir('dir')
         write_file(fs, 'dir/file2')
+        native_dir_path = os.path.join(os.curdir, 'dir')
         assert [item for item in fs.walk('.')] == [
-            ('.', ['dir'], ['file']), ('./dir', [], ['file2'])]
+            ('.', ['dir'], ['file']), (native_dir_path, [], ['file2'])]
 
     def test_utime(self, fs):
         write_file(fs, 'file')

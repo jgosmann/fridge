@@ -135,9 +135,10 @@ class TestFridge(object):
         fridge = Fridge(core_mock, fs)
         fridge.commit()
 
-        core_mock.add_blob.assert_called_once_with('./mockfile')
+        call_path = os.path.join(os.curdir, 'mockfile')
+        core_mock.add_blob.assert_called_once_with(call_path)
         core_mock.add_snapshot.assert_called_once_with([SnapshotItem(
-            'hash', './mockfile', fs.stat('mockfile'))])
+            'hash', call_path, fs.stat('mockfile'))])
         core_mock.set_head.assert_called_once('hash2')
 
     def test_checkout(self):

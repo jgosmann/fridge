@@ -24,6 +24,9 @@ def test_persists_data():
     f = env.writefile('somefile', b'with some content')
     mode = stat.S_IRWXU
     os.chmod(f.full, mode)
+    # Some systems (Windows) do not fully support chmod. Thus check the actual
+    # mode set.
+    mode = stat.S_IMODE(os.stat(f.full).st_mode)
     env.run(sys.executable, FRIDGE, 'commit')
     os.unlink(os.path.join(env.base_path, 'somefile'))
     result = env.run(sys.executable, FRIDGE, 'checkout', 'somefile')
