@@ -422,7 +422,8 @@ class MemoryFS(MemoryFSNode):
         node = self.get_node(split_path)
         del node.children[filename]
 
-    def utime(self, path, (atime, mtime)):
+    def utime(self, path, times):
+        atime, mtime = times
         node = self.get_node(self._split_whole_path(path))
         node.status.st_atime = atime
         node.status.st_mtime = mtime
