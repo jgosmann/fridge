@@ -203,6 +203,35 @@ class MemoryFS(MemoryFSNode):
         if not created_dir:
             raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
+    def copy(self, src, dest):
+        """Copy a file.
+
+        Parameters
+        ----------
+        src : str
+            Source path.
+        dest : str
+            Destination path.
+
+        See also
+        --------
+        shutil.copy
+        """
+        src_split = self._split_whole_path(src)
+        src_base = src_split.pop()
+        src_node = self.get_node(src_split)
+
+        dest_split = self._split_whole_path(dest)
+        dest_base = dest_split.pop()
+        dest_node = self.get_node(dest_split)
+
+        copied = MemoryFile(dest_node)
+        with src_node.children[src_base].open('rb') as sf:
+            with copied.open('wb') as df:
+                df.write(sf.read())
+
+        dest_node.children[dest_base] = copied
+
     def rename(self, src, dest):
         """Renames a file or directory.
 

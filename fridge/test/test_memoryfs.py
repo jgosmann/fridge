@@ -80,6 +80,22 @@ class TestMemoryFS(object):
         with pytest.raises(KeyError):
             fs.get_node(['nonexistent'])
 
+    def test_copy(self):
+        fs = MemoryFS()
+        fs.mkdir('sub1')
+        fs.mkdir('sub2')
+        src = os.path.join('sub1', 'src')
+        dest = os.path.join('sub2', 'dest')
+        with fs.open(src, 'w') as f:
+            f.write(u'dummy')
+        fs.copy(src, dest)
+        with fs.open(src, 'a+') as f:
+            f.seek(0, os.SEEK_SET)
+            assert f.read() == u'dummy'
+            f.write(u' content')
+        with fs.open(dest, 'r') as f:
+            assert f.read() == u'dummy'
+
     def test_mkdir(self):
         fs = MemoryFS()
         fs.mkdir('test')
