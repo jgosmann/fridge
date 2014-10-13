@@ -296,3 +296,12 @@ class TestMemoryFS(object):
             f.write(u'foo')
         assert [item for item in fs.walk('.')] == [
             ('.', ['dir'], ['file']), ('./dir', [], ['file2'])]
+
+    def test_utime(self):
+        fs = MemoryFS()
+        with fs.open('file', 'w') as f:
+            f.write(u'foo')
+        fs.utime('file', (1.1, 2.2))
+        st = fs.stat('file')
+        assert st.st_atime == 1.1
+        assert st.st_mtime == 2.2

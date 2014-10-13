@@ -11,6 +11,8 @@ import stat as st
 class Stat(object):
     def __init__(self):
         self.st_mode = 0
+        self.st_atime = 0.
+        self.st_mtime = 0.
 
 
 class MemoryFSNode(object):
@@ -415,6 +417,11 @@ class MemoryFS(MemoryFSNode):
         filename = split_path.pop()
         node = self.get_node(split_path)
         del node.children[filename]
+
+    def utime(self, path, (atime, mtime)):
+        node = self.get_node(self._split_whole_path(path))
+        node.status.st_atime = atime
+        node.status.st_mtime = mtime
 
     def walk(self, path):
         # TODO documentation
