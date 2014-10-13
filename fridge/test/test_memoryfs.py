@@ -108,6 +108,22 @@ class TestMemoryFS(object):
         fs.chmod('dir', s)
         assert fs.stat('dir').st_mode == s
 
+    def test_respects_writable_mode_of_files(self):
+        fs = MemoryFS()
+        with fs.open('file', 'w') as f:
+            f.write(u'foo')
+        fs.chmod('file', stat.S_IRUSR)
+        with fs.open('file', 'r') as f:
+            assert f.read() == u'foo'
+        with pytest.raises(OSError) as excinfo:
+            with fs.open('file', 'a'):
+                pass
+        assert excinfo.value.errno == errno.EACCES
+        with pytest.raises(OSError) as excinfo:
+            with fs.open('file', 'w'):
+                pass
+        assert excinfo.value.errno == errno.EACCES
+
     def test_copy(self):
         fs = MemoryFS()
         fs.mkdir('sub1')

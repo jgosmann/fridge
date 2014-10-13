@@ -120,6 +120,17 @@ class MemoryFile(MemoryFSNode):
         --------
         io.open
         """
+        need_read_perm = 'r' in mode or '+' in mode
+        need_write_perm = 'w' in mode or 'a' in mode
+        if need_read_perm and not st.S_IMODE(self.status.st_mode) & st.S_IREAD:
+            raise OSError(errno.EACCES, "Permission denied.")
+        if (need_write_perm and
+                not st.S_IMODE(self.status.st_mode) & st.S_IWRITE):
+            raise OSError(errno.EACCES, "Permission denied.")
+
+        if 'w' in mode:
+            self.content = b''
+
         self._mode = mode
         if 'b' in mode:
             self._delegate = BytesIO(self.content)
@@ -356,7 +367,7 @@ class MemoryFS(MemoryFSNode):
         filename = split_path.pop()
         node = self.get_node(split_path)
 
-        create = 'w' in mode or ('a' in mode and filename not in node.children)
+        create = ('w' in mode or 'a' in mode) and filename not in node.children
         if create:
             node.children[filename] = MemoryFile()
         try:
