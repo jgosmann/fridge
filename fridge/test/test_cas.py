@@ -1,3 +1,5 @@
+import stat
+
 import pytest
 
 from fridge.cas import ContentAddressableStorage
@@ -61,3 +63,12 @@ class TestContentAddressableStorage(object):
         with pytest.raises(OSError):
             with fs.open(cas.get_path(key), 'w'):
                 pass
+
+    def test_store_does_not_add_permissions_to_originals(self):
+        fs = MemoryFS()
+        cas = self.create_cas(fs)
+        with fs.open('testfile', 'w') as f:
+            f.write(u'dummy content')
+        fs.chmod('testfile', stat.S_IRUSR)
+        cas.store('testfile')
+        assert stat.S_IMODE(fs.stat('testfile').st_mode) == stat.S_IRUSR

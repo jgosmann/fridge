@@ -54,7 +54,6 @@ class ContentAddressableStorage(object):
 
         mode = stat.S_IMODE(self._fs.stat(filepath).st_mode)
         self._fs.rename(filepath, target_path)
-        # FIXME Test doesn't add permissions
         store_mode = mode & (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
         self._fs.chmod(target_path, store_mode)
         self._fs.copy(target_path, filepath)
