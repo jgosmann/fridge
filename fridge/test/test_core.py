@@ -230,3 +230,18 @@ class TestFridge(object):
         fs.chmod.assert_called_once_with('file', stat.S_IMODE(status.st_mode))
         fs.utime.assert_called_once_with(
             'file', (status.st_atime, status.st_mtime))
+
+    def test_log(self):
+        commits = [
+            ('headhash', Commit(2., 'snapshot2', 'msg2', 'c1')),
+            ('c1', Commit(1., 'snapshot1', 'msg1', 'c0')),
+            ('c0', Commit(0., 'snapshot0', 'msg0', None))]
+        commit_dict = {}
+        for (k, v) in commits:
+            commit_dict[k] = v
+        fs = MagicMock()
+        core_mock = MagicMock()
+        core_mock.get_head.return_value = 'headhash'
+        core_mock.read_commit.side_effect = lambda k: commit_dict[k]
+
+        assert commits == Fridge(core_mock, fs).log()

@@ -234,3 +234,11 @@ class Fridge(object):
             # FIXME ensure UTC
             self._fs.utime(
                 item.path, (item.status.st_atime, item.status.st_mtime))
+
+    def log(self):
+        head = self._core.get_head()
+        commits = [(head, self._core.read_commit(head))]
+        while commits[-1][1].parent is not None:
+            key = commits[-1][1].parent
+            commits.append((key, self._core.read_commit(key)))
+        return commits
