@@ -103,6 +103,7 @@ class TestDataObject(object):
         assert a1 == a3 and a3 == a1
         assert a1 != different and different != a1
         assert a1 != different2 and different2 != a1
+        assert a1 != (1, 2)
 
 
 def test_snapshot_item_serialization_roundtrip():

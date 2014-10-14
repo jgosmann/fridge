@@ -30,7 +30,7 @@ class DataObject(object):
             raise TypeError("Unknown keyword argument {}.", kwargs.keys()[0])
 
     def __eq__(self, other):
-        if self.__slots__ != other.__slots__:
+        if hasattr(other, '__slots__') and self.__slots__ != other.__slots__:
             return False
 
         for name in self.__slots__:
