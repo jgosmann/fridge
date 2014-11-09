@@ -1,11 +1,32 @@
 import ast
+from datetime import datetime
 import os.path
 import re
 import stat
-import time
 
 from fridge.cas import ContentAddressableStorage
 import fridge.fs
+
+
+# TODO test the time functions, move to it's own module
+_START_OF_EPOCH = datetime(1970, 1, 1)
+
+
+def _utc_time():
+    return _datetime2timestamp(datetime.utcnow())
+
+
+def _timestamp2utc(timestamp):
+    return _datetime2timestamp(datetime.utcfromtimestamp(timestamp))
+
+
+def _datetime2timestamp(dt):
+    return (dt - _START_OF_EPOCH).total_seconds()
+
+
+def _utc2timestamp(utc):
+    diff = _START_OF_EPOCH - datetime.utcfromtimestamp(0.)
+    return utc - diff.total_seconds()
 
 
 class DataObject(object):
@@ -78,7 +99,8 @@ class SnapshotItem(DataObject, Serializable):
             serialized, 5)
         status = Stat(
             st_mode=int(mode, 8) | stat.S_IFREG,
-            st_size=int(size), st_atime=float(atime), st_mtime=float(mtime))
+            st_size=int(size), st_atime=_utc2timestamp(float(atime)),
+            st_mtime=_utc2timestamp(float(mtime)))
         return cls(key, ast.literal_eval(path_repr), status)
 
     def serialize(self):
@@ -88,8 +110,8 @@ class SnapshotItem(DataObject, Serializable):
             key=self.checksum,
             mode=stat.S_IMODE(self.status.st_mode),
             size=self.status.st_size,
-            atime=self.status.st_atime,
-            mtime=self.status.st_mtime,
+            atime=_timestamp2utc(self.status.st_atime),
+            mtime=_timestamp2utc(self.status.st_mtime),
             path=self.path)
 
 
@@ -165,8 +187,7 @@ class FridgeCore(object):
         return self._snapshots.store(tmp_file)
 
     def add_commit(self, snapshot_key, message):
-        # FIXME ensure UTC time
-        c = Commit(time.time(), snapshot_key, message, self.get_head())
+        c = Commit(_utc_time(), snapshot_key, message, self.get_head())
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(c.serialize())
@@ -212,9 +233,9 @@ class Fridge(object):
                 dirnames.remove('.fridge')
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
+                stat = self._fs.stat(path)
                 checksum = self._core.add_blob(path)
-                snapshot.append(SnapshotItem(
-                    checksum, path, self._fs.stat(path)))
+                snapshot.append(SnapshotItem(checksum, path, stat))
         snapshot_hash = self._core.add_snapshot(snapshot)
         commit_hash = self._core.add_commit(snapshot_hash, message)
         self._core.set_head(commit_hash)
@@ -227,7 +248,6 @@ class Fridge(object):
         for item in snapshot:
             self._core.checkout_blob(item.checksum, item.path)
             self._fs.chmod(item.path, stat.S_IMODE(item.status.st_mode))
-            # FIXME ensure UTC
             self._fs.utime(
                 item.path, (item.status.st_atime, item.status.st_mtime))
 
