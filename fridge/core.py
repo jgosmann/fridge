@@ -151,7 +151,8 @@ class FridgeCore(object):
         return cls(path, fs, cas_factory)
 
     def add_blob(self, path):
-        return self._blobs.store(path)
+        key = self._blobs.store(path)
+        return key
 
     @staticmethod
     def serialize_snapshot(snapshot):
@@ -161,10 +162,7 @@ class FridgeCore(object):
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(self.serialize_snapshot(snapshot))
-        try:
-            return self._snapshots.store(tmp_file)
-        finally:
-            self._fs.unlink(tmp_file)
+        return self._snapshots.store(tmp_file)
 
     def add_commit(self, snapshot_key, message):
         # FIXME ensure UTC time
@@ -172,10 +170,7 @@ class FridgeCore(object):
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(c.serialize())
-        try:
-            return self._commits.store(tmp_file)
-        finally:
-            self._fs.unlink(tmp_file)
+        return self._commits.store(tmp_file)
 
     @staticmethod
     def parse_snapshot(serialized_snapshot):
@@ -223,6 +218,7 @@ class Fridge(object):
         snapshot_hash = self._core.add_snapshot(snapshot)
         commit_hash = self._core.add_commit(snapshot_hash, message)
         self._core.set_head(commit_hash)
+        self.checkout()
 
     def checkout(self):
         head = self._core.get_head()

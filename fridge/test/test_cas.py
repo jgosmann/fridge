@@ -1,5 +1,3 @@
-import stat
-
 import pytest
 
 from fridge.cas import ContentAddressableStorage
@@ -29,14 +27,13 @@ class TestContentAddressableStorage(object):
             content = f.read()
         assert content == u'dummy content'
 
-    def test_file_can_still_be_accessed_after_store(self):
+    def test_file_removed_after_store(self):
         fs = MemoryFS()
         cas = self.create_cas(fs)
         with fs.open('testfile', 'w') as f:
             f.write(u'dummy content')
         cas.store('testfile')
-        with fs.open('testfile', 'r') as f:
-            assert f.read() == u'dummy content'
+        assert not fs.exists('testfile')
 
     def test_writing_original_files_keeps_stored_file_unchanged(self):
         fs = MemoryFS()
@@ -63,12 +60,3 @@ class TestContentAddressableStorage(object):
         with pytest.raises(OSError):
             with fs.open(cas.get_path(key), 'w'):
                 pass
-
-    def test_store_does_not_add_permissions_to_originals(self):
-        fs = MemoryFS()
-        cas = self.create_cas(fs)
-        with fs.open('testfile', 'w') as f:
-            f.write(u'dummy content')
-        fs.chmod('testfile', stat.S_IRUSR)
-        cas.store('testfile')
-        assert stat.S_IMODE(fs.stat('testfile').st_mode) == stat.S_IRUSR

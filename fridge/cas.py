@@ -56,9 +56,6 @@ class ContentAddressableStorage(object):
         self._fs.rename(filepath, target_path)
         store_mode = mode & (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
         self._fs.chmod(target_path, store_mode)
-        # FIXME no automatic re-checkout here
-        self._fs.copy(target_path, filepath)
-        self._fs.chmod(filepath, mode)
         return key
 
     def get_path(self, key):
