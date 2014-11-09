@@ -9,11 +9,6 @@ import scripttest
 
 
 HASH_REGEX = r'[0-9a-f]{40}'
-# FIXME dependent on locale
-DATE_REGEX = (
-    r'(Mon|Tue|Wed|Thu|Fri|Sat|Sun) ' +
-    r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) ' +
-    r'\d{1,2} \d{1,2}:\d{2}:\d{2} \d+ [-+]\d{4}')
 
 
 def find_executable(name):
@@ -53,13 +48,13 @@ def test_has_log():
     env.run(sys.executable, FRIDGE, 'commit', '-m', 'Second commit.')
     result = env.run(sys.executable, FRIDGE, 'log')
     assert re.match(r"""commit {hash}
-Date: {date}
+Date: .*
 
     Second commit.
 
 commit {hash}
-Date: {date}
+Date: .*
 
     First commit.
 
-""".format(hash=HASH_REGEX, date=DATE_REGEX), result.stdout)
+""".format(hash=HASH_REGEX), result.stdout)
