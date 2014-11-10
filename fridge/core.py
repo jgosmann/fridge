@@ -1,32 +1,11 @@
 import ast
-from datetime import datetime
 import os.path
 import re
 import stat
 
 from fridge.cas import ContentAddressableStorage
 import fridge.fs
-
-
-# TODO test the time functions, move to it's own module
-_START_OF_EPOCH = datetime(1970, 1, 1)
-
-
-def _utc_time():
-    return _datetime2timestamp(datetime.utcnow())
-
-
-def _timestamp2utc(timestamp):
-    return _datetime2timestamp(datetime.utcfromtimestamp(timestamp))
-
-
-def _datetime2timestamp(dt):
-    return (dt - _START_OF_EPOCH).total_seconds()
-
-
-def _utc2timestamp(utc):
-    diff = _START_OF_EPOCH - datetime.utcfromtimestamp(0.)
-    return utc - diff.total_seconds()
+from fridge.time import utc2timestamp, timestamp2utc, utc_time
 
 
 class DataObject(object):
@@ -99,8 +78,8 @@ class SnapshotItem(DataObject, Serializable):
             serialized, 5)
         status = Stat(
             st_mode=int(mode, 8) | stat.S_IFREG,
-            st_size=int(size), st_atime=_utc2timestamp(float(atime)),
-            st_mtime=_utc2timestamp(float(mtime)))
+            st_size=int(size), st_atime=utc2timestamp(float(atime)),
+            st_mtime=utc2timestamp(float(mtime)))
         return cls(key, ast.literal_eval(path_repr), status)
 
     def serialize(self):
@@ -110,8 +89,8 @@ class SnapshotItem(DataObject, Serializable):
             key=self.checksum,
             mode=stat.S_IMODE(self.status.st_mode),
             size=self.status.st_size,
-            atime=_timestamp2utc(self.status.st_atime),
-            mtime=_timestamp2utc(self.status.st_mtime),
+            atime=timestamp2utc(self.status.st_atime),
+            mtime=timestamp2utc(self.status.st_mtime),
             path=self.path)
 
 
@@ -187,7 +166,7 @@ class FridgeCore(object):
         return self._snapshots.store(tmp_file)
 
     def add_commit(self, snapshot_key, message):
-        c = Commit(_utc_time(), snapshot_key, message, self.get_head())
+        c = Commit(utc_time(), snapshot_key, message, self.get_head())
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
             f.write(c.serialize())
