@@ -81,6 +81,7 @@ class ContentAddressableStorage(object):
         with self._fs.open(path, 'rb') as f:
             buf = b'\0'
             while buf != b'':
+                # FIXME Use os.statvfs to obtain block size f_bsize.
                 buf = f.read(4096)  # 4KiB is the block size of most HDD
                 h.update(buf)
         return h.hexdigest()
