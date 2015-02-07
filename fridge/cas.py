@@ -77,11 +77,17 @@ class ContentAddressableStorage(object):
         # We'll stick to sha1 for now. It's almost as fast as md5, while more
         # secure hash function (i.e. sha256/512) need up to twice as long. As
         # this CAS might be used with huge data, speed is important.
+        blocksize = self._get_blocksize(path)
         h = hashlib.sha1()
         with self._fs.open(path, 'rb') as f:
             buf = b'\0'
             while buf != b'':
-                # FIXME Use os.statvfs to obtain block size f_bsize.
-                buf = f.read(4096)  # 4KiB is the block size of most HDD
+                buf = f.read(blocksize)
                 h.update(buf)
         return h.hexdigest()
+
+    def _get_blocksize(self, path):
+        try:
+            return self._fs.statvfs(path).f_frsize
+        except AttributeError:
+            return 4096  # 4KiB is the block size of most HDD
