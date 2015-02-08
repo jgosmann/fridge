@@ -303,6 +303,15 @@ class MemoryFS(MemoryFSNode):
         dest_node.children[dest_base] = src_node.children[src_base]
         del src_node.children[src_base]
 
+    def rmdir(self, path):
+        # TODO documentation
+        split_path = self._split_whole_path(path)
+        dirname = split_path.pop()
+        node = self.get_node(split_path)
+        if len(node.children[dirname].children) > 0:
+            raise OSError(errno.ENOTEMPTY, "Directory not empty.")
+        del node.children[dirname]
+
     def stat(self, path):
         return self.get_node(self._split_whole_path(path)).status
 

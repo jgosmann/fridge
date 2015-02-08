@@ -247,6 +247,17 @@ class TestMemoryFS(object):
             data = f.read()
         assert data == u'dummy content'
 
+    def test_rmdir(self, fs):
+        fs.mkdir('dir')
+        fs.rmdir('dir')
+        assert not fs.exists('dir')
+
+        fs.mkdir('dirx')
+        write_file(fs, os.path.join('dirx', 'filename'), u'content')
+        with pytest.raises(OSError) as excinfo:
+            fs.rmdir('dirx')
+        assert excinfo.value.errno == errno.ENOTEMPTY
+
     def test_samefile(self, fs):
         write_file(fs, 'file1', u'file1')
         write_file(fs, 'file2', u'file2')
