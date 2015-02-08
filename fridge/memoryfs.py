@@ -8,6 +8,20 @@ import os
 import stat as st
 
 
+class __TimeCounter(object):
+    slots = ['t']
+
+    def __init__(self):
+        self.t = 0.
+
+    def __call__(self):
+        self.t += 1.
+        return self.t
+
+
+_get_time = __TimeCounter()
+
+
 class Stat(object):
     def __init__(self, other=None):
         self.st_mode = 0
@@ -163,6 +177,7 @@ class MemoryFile(MemoryFSNode):
         else:
             self.content = self._delegate.getvalue().encode()
         self.status.st_size = len(self.content)
+        self.status.st_mtime = _get_time()
 
     def close(self):
         """Flushes and closes the file.

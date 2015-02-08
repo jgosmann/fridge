@@ -111,6 +111,13 @@ class TestMemoryFS(object):
         write_file(fs, 'file', content)
         assert fs.stat('file').st_size == len(content)
 
+    def test_modification_date(self, fs):
+        write_file(fs, 'file')
+        t1 = fs.stat('file').st_mtime
+        write_file(fs, 'file')
+        t2 = fs.stat('file').st_mtime
+        assert t1 < t2
+
     def test_chmod(self, fs):
         fs.mkdir('dir')
         s = stat.S_IRWXU
