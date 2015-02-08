@@ -33,7 +33,7 @@ def test_persists_data():
     mode = stat.S_IMODE(os.stat(f.full).st_mode)
     env.run(sys.executable, FRIDGE, 'commit')
     os.unlink(os.path.join(env.base_path, 'somefile'))
-    result = env.run(sys.executable, FRIDGE, 'checkout', 'somefile')
+    result = env.run(sys.executable, FRIDGE, 'checkout')
     assert result.files_created['somefile'].bytes == 'with some content'
     assert stat.S_IMODE(os.stat(
         result.files_created['somefile'].full).st_mode) == mode
@@ -56,5 +56,27 @@ commit {hash}
 Date: .*
 
     First commit.
+
+""".format(hash=HASH_REGEX), result.stdout)
+
+
+def test_creates_branches():
+    env = scripttest.TestFileEnvironment()
+    env.run(sys.executable, FRIDGE, 'init')
+    env.writefile('data1', b'one')
+    env.run(sys.executable, FRIDGE, 'commit', '-m', 'Exp 1 commit 1')
+    env.run(sys.executable, FRIDGE, 'branch', 'exp2')
+    env.writefile('data1', b'one one')
+    env.writefile('data2', b'two')
+    env.run(sys.executable, FRIDGE, 'commit', '-m', 'Exp 2 commit 1')
+    result = env.run(sys.executable, FRIDGE, 'checkout', 'master')
+
+    assert 'data2' in result.files_deleted
+    assert result.files_updated['data1'].bytes == 'one'
+    result = env.run(sys.executable, FRIDGE, 'log')
+    assert re.match(r"""commit {hash}
+Date: .*
+
+    Exp 1 commit 1
 
 """.format(hash=HASH_REGEX), result.stdout)

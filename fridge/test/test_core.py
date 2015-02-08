@@ -6,7 +6,7 @@ import pytest
 
 from fridge.memoryfs import MemoryFS
 from fridge.core import (
-    DataObject, Commit, Fridge, FridgeCore, SnapshotItem, Stat)
+    Branch, Commit, DataObject, Fridge, FridgeCore, Head, SnapshotItem, Stat)
 
 
 class CasMockFactory(object):
@@ -122,6 +122,27 @@ def test_commit_serialization_roundtrip():
     assert a == b
 
 
+def test_branch_serialization_roundtrip():
+    a = Branch(64 * 'a')
+    ser = a.serialize()
+    b = Branch.parse(ser)
+    assert a == b
+
+
+def test_head_with_commit_serialization_roundtrip():
+    a = Head(Head.COMMIT, 64 * 'a')
+    ser = a.serialize()
+    b = Head.parse(ser)
+    assert a == b
+
+
+def test_head_with_branch_serialization_roundtrip():
+    a = Head(Head.BRANCH, 'branch_name')
+    ser = a.serialize()
+    b = Head.parse(ser)
+    assert a == b
+
+
 class TestFridgeCore(object):
     def _create_snapshot(self):
         return [
@@ -165,11 +186,19 @@ class TestFridgeCore(object):
 
     def test_setting_and_getting_head(self, fs):
         fridge = FridgeCore.init(os.curdir, fs)
-        fridge.set_head(u'ab12cd')
+        fridge.set_head(Head(Head.COMMIT, u'ab12cd'))
         del fridge
 
         fridge = FridgeCore(os.curdir, fs)
-        assert fridge.get_head() == u'ab12cd'
+        assert fridge.get_head() == Head(Head.COMMIT, u'ab12cd')
+
+    def test_setting_and_getting_branch(self, fs):
+        fridge = FridgeCore.init(os.curdir, fs)
+        fridge.set_branch('test_branch', u'ab12cd')
+        del fridge
+
+        fridge = FridgeCore(os.curdir, fs)
+        assert fridge.resolve_ref('test_branch') == u'ab12cd'
 
     def test_checkout_blob(self, fs, cas_factory, fridge_core):
         with fs.open('mockfile', 'w') as f:
@@ -197,6 +226,7 @@ class TestFridge(object):
         core_mock.add_blob.return_value = 'hash'
         core_mock.add_snapshot.return_value = 'snapshot_hash'
         core_mock.add_commit.return_value = 'commit_hash'
+        core_mock.get_head.return_value = Head(Head.BRANCH, 'master')
         fridge = Fridge(core_mock, fs)
         fridge.commit(message='msg')
 
@@ -206,12 +236,14 @@ class TestFridge(object):
             'hash', call_path, fs.stat('mockfile'))])
         core_mock.add_commit.assert_called_once_with(
             'snapshot_hash', 'msg')
-        core_mock.set_head.assert_called_once('commit_hash')
+        core_mock.set_branch.assert_called_once('master', 'commit_hash')
 
     def test_checkout(self):
+        # TODO check checkout of different commit
         fs = MagicMock()
         core_mock = MagicMock()
-        core_mock.get_head.return_value = 'headhash'
+        core_mock.get_head.return_value = Head(Head.COMMIT, 'headhash')
+        core_mock.resolve_ref.return_value = 'headhash'
         core_mock.read_commit.return_value = Commit(
             timestamp=1.23, snapshot='snapshot_hash', message='msg',
             parent=None)
@@ -224,8 +256,8 @@ class TestFridge(object):
 
         # pylint: disable=no-member
         core_mock.get_head.assert_called_once_with()
-        core_mock.read_commit.assert_called_once_with('headhash')
-        core_mock.read_snapshot.assert_called_once_with('snapshot_hash')
+        core_mock.read_commit.assert_called_with('headhash')
+        core_mock.read_snapshot.assert_called_with('snapshot_hash')
         core_mock.checkout_blob.assert_called_once_with('hash', 'file')
         fs.chmod.assert_called_once_with('file', stat.S_IMODE(status.st_mode))
         fs.utime.assert_called_once_with(
@@ -241,7 +273,8 @@ class TestFridge(object):
             commit_dict[k] = v
         fs = MagicMock()
         core_mock = MagicMock()
-        core_mock.get_head.return_value = 'headhash'
+        core_mock.get_head.return_value = Head(Head.COMMIT, 'headhash')
+        core_mock.resolve_ref.return_value = 'headhash'
         core_mock.read_commit.side_effect = lambda k: commit_dict[k]
 
         assert commits == Fridge(core_mock, fs).log()

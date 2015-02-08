@@ -36,8 +36,14 @@ def main(argv=None):
         subargs = subparser.parse_args(args.argv)
         fridge.commit(subargs.m[0])
     elif 'checkout' in args.cmd:
+        subparser = argparse.ArgumentParser()
+        subparser.add_argument('ref', nargs='?', default=None, type=str)
+        subargs = subparser.parse_args(args.argv)
         fridge = Fridge(FridgeCore(os.curdir))
-        fridge.checkout()
+        fridge.checkout(subargs.ref)
+    elif 'branch' in args.cmd:
+        fridge = Fridge(FridgeCore(os.curdir))
+        fridge.branch(args.argv[0])
     elif 'log' in args.cmd:
         fridge = Fridge(FridgeCore(os.curdir))
         commits = fridge.log()
