@@ -459,5 +459,8 @@ class MemoryFS(MemoryFSNode):
                     filenames.append(name)
                 else:
                     dirnames.append(name)
-                    stack.append((os.path.join(node_path, name), child))
             yield node_path, dirnames, filenames
+
+            for name, child in node.children.items():
+                if name in dirnames:
+                    stack.append((os.path.join(node_path, name), child))
