@@ -275,4 +275,14 @@ class TestFridge(object):
         assert result.updated == ['update']
         assert result.added == ['new']
 
+    def test_is_clean(self, fridge, fs):
+        assert fridge.is_clean()
+        write_file(fs, 'file')
+        assert not fridge.is_clean()
+        fridge.commit()
+        assert fridge.is_clean()
+        fs.unlink('file')
+        assert not fridge.is_clean()
+
     # TODO prevent empty commit
+    # TODO two files with same content

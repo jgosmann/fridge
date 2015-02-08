@@ -390,6 +390,10 @@ class Fridge(object):
 
         return d
 
+    def is_clean(self):
+        d = self.diff()
+        return len(d.added) + len(d.removed) + len(d.updated) == 0
+
 
 class FridgeError(RuntimeError):
     pass
