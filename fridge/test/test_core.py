@@ -261,4 +261,18 @@ class TestFridge(object):
         with pytest.raises(BranchExistsError):
             fridge.branch('branch')
 
+    def test_diff(self, fridge, fs):
+        write_file(fs, 'remove')
+        write_file(fs, 'update', u'ver1')
+        write_file(fs, 'unchanged', u'foobar')
+        fridge.commit()
+        fs.unlink('remove')
+        write_file(fs, 'update', u'ver2')
+        write_file(fs, 'new')
+
+        result = fridge.diff()
+        assert result.removed == ['remove']
+        assert result.updated == ['update']
+        assert result.added == ['new']
+
     # TODO prevent empty commit

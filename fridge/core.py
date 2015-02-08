@@ -162,6 +162,13 @@ class Reference(DataObject, Serializable):
         return u'{t}: {r}'.format(t=self.type, r=self.ref)
 
 
+class Diff(object):
+    def __init__(self):
+        self.removed = []
+        self.updated = []
+        self.added = []
+
+
 class FridgeCore(object):
     def __init__(
             self, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
@@ -270,6 +277,13 @@ class Fridge(object):
         self._core = fridge_core
         self._fs = fs
 
+    def _list_files(self):
+        for dirpath, dirnames, filenames in self._fs.walk('.'):
+            if '.fridge' in dirnames:
+                dirnames.remove('.fridge')
+            for filename in filenames:
+                yield os.path.join(dirpath, filename)
+
     def refparse(self, ref):
         potential_types = []
         if self._core.is_branch(ref):
@@ -286,14 +300,10 @@ class Fridge(object):
 
     def commit(self, message=""):
         snapshot = []
-        for dirpath, dirnames, filenames in self._fs.walk('.'):
-            if '.fridge' in dirnames:
-                dirnames.remove('.fridge')
-            for filename in filenames:
-                path = os.path.join(dirpath, filename)
-                stat = self._fs.stat(path)
-                checksum = self._core.add_blob(path)
-                snapshot.append(SnapshotItem(checksum, path, stat))
+        for path in self._list_files():
+            stat = self._fs.stat(path)
+            checksum = self._core.add_blob(path)
+            snapshot.append(SnapshotItem(checksum, path, stat))
         snapshot_hash = self._core.add_snapshot(snapshot)
         commit_hash = self._core.add_commit(snapshot_hash, message)
 
@@ -351,6 +361,34 @@ class Fridge(object):
             key = commits[-1][1].parent
             commits.append((key, self._core.read_commit(key)))
         return commits
+
+    def diff(self):
+        head_key = self._core.get_head_key()
+        if head_key == '':
+            snapshot = []
+        else:
+            commit = self._core.read_commit(head_key)
+            snapshot = self._core.read_snapshot(commit.snapshot)
+
+        d = Diff()
+        for item in snapshot:
+            if self._fs.exists(item.path):
+                # FIXME possibility for strict check via SHA or compare
+                stat = self._fs.stat(item.path)
+                eq_size = stat.st_size == item.status.st_size
+                eq_mtime = stat.st_mtime == item.status.st_mtime
+                eq_mode = stat.st_mode == item.status.st_mode
+                if not (eq_size and eq_mtime and eq_mode):
+                    d.updated.append(os.path.relpath(item.path))
+            else:
+                d.removed.append(os.path.relpath(item.path))
+
+        known_files = [item.path for item in snapshot]
+        for path in self._list_files():
+            if path not in known_files:
+                d.added.append(os.path.relpath(path))
+
+        return d
 
 
 class FridgeError(RuntimeError):
