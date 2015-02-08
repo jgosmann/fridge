@@ -279,6 +279,15 @@ class TestMemoryFS(object):
         assert [item for item in fs.walk('.')] == [
             ('.', ['dir'], ['file']), (native_dir_path, [], ['file2'])]
 
+    def test_bottomup_walk(self, fs):
+        fs = MemoryFS()
+        write_file(fs, 'file')
+        fs.mkdir('dir')
+        write_file(fs, 'dir/file2')
+        native_dir_path = os.path.join(os.curdir, 'dir')
+        assert [item for item in fs.walk('.', topdown=False)] == [
+            (native_dir_path, [], ['file2']), ('.', ['dir'], ['file'])]
+
     def test_utime(self, fs):
         write_file(fs, 'file')
         fs.utime('file', (1.1, 2.2))

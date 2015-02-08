@@ -437,8 +437,13 @@ class MemoryFS(MemoryFSNode):
         node.status.st_atime = atime
         node.status.st_mtime = mtime
 
-    def walk(self, path):
+    def walk(self, path, topdown=True):
         # TODO documentation
+        if not topdown:
+            for item in reversed(list(self.walk(path, topdown=True))):
+                yield item
+            return
+
         stack = [(path, self.get_node(self._split_whole_path(path)))]
         while len(stack) > 0:
             node_path, node = stack.pop()
