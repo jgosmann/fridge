@@ -4,25 +4,9 @@ import stat
 
 import pytest
 
+from fridge.fstest import (
+    assert_file_content_equal, assert_open_raises, write_file)
 from fridge.memoryfs import MemoryFile, MemoryFS
-
-
-def write_file(fs, path, content=u'foo'):
-    with fs.open(path, 'w') as f:
-        f.write(content)
-
-
-def assert_file_content_equal(fs, path, content):
-    with fs.open(path, 'r') as f:
-        assert f.read() == content
-
-
-def assert_open_raises(fs, path, err, mode='r'):
-    with pytest.raises(OSError) as excinfo:
-        with fs.open(path, mode):
-            pass
-    assert excinfo.value.errno == err
-    assert excinfo.value.filename == path
 
 
 @pytest.fixture
@@ -282,7 +266,6 @@ class TestMemoryFS(object):
         assert excinfo.value.filename == 'file'
 
     def test_walk(self, fs):
-        fs = MemoryFS()
         write_file(fs, 'file')
         fs.mkdir('dir')
         write_file(fs, 'dir/file2')
@@ -291,7 +274,6 @@ class TestMemoryFS(object):
             ('.', ['dir'], ['file']), (native_dir_path, [], ['file2'])]
 
     def test_bottomup_walk(self, fs):
-        fs = MemoryFS()
         write_file(fs, 'file')
         fs.mkdir('dir')
         write_file(fs, 'dir/file2')
