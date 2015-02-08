@@ -13,6 +13,7 @@ class Stat(object):
         self.st_mode = 0
         self.st_atime = 0.
         self.st_mtime = 0.
+        self.st_size = 0
 
 
 class MemoryFSNode(object):
@@ -149,6 +150,7 @@ class MemoryFile(MemoryFSNode):
             self.content = self._delegate.getvalue()
         else:
             self.content = self._delegate.getvalue().encode()
+        self.status.st_size = len(self.content)
 
     def close(self):
         """Flushes and closes the file.

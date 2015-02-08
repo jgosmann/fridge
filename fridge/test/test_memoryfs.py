@@ -115,6 +115,11 @@ class TestMemoryFS(object):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
             stat.S_IROTH | stat.S_IWOTH)
 
+    def test_file_size(self, fs):
+        content = u'filecontent'
+        write_file(fs, 'file', content)
+        assert fs.stat('file').st_size == len(content)
+
     def test_chmod(self, fs):
         fs.mkdir('dir')
         s = stat.S_IRWXU
