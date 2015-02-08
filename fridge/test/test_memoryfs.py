@@ -275,6 +275,12 @@ class TestMemoryFS(object):
         fs.unlink('file')
         assert_open_raises(fs, 'file', errno.ENOENT)
 
+    def test_unlink_raises_OSError_if_not_exists(self, fs):
+        with pytest.raises(OSError) as excinfo:
+            fs.unlink('file')
+        assert excinfo.value.errno == errno.ENOENT
+        assert excinfo.value.filename == 'file'
+
     def test_walk(self, fs):
         fs = MemoryFS()
         write_file(fs, 'file')

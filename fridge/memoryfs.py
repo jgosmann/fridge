@@ -430,8 +430,11 @@ class MemoryFS(MemoryFSNode):
         """
         split_path = self._split_whole_path(path)
         filename = split_path.pop()
-        node = self.get_node(split_path)
-        del node.children[filename]
+        try:
+            node = self.get_node(split_path)
+            del node.children[filename]
+        except KeyError:
+            raise OSError(errno.ENOENT, 'No such file or directory.', path)
 
     def utime(self, path, times):
         atime, mtime = times
