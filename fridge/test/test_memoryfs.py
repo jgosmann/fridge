@@ -99,6 +99,13 @@ class TestMemoryFS(object):
             stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP |
             stat.S_IROTH | stat.S_IWOTH)
 
+    def test_stat_returns_copy(self, fs):
+        write_file(fs, 'file')
+        s1 = fs.stat('file')
+        assert s1.st_mode != 0
+        s1.st_mode = 0
+        assert fs.stat('file').st_mode != 0
+
     def test_file_size(self, fs):
         content = u'filecontent'
         write_file(fs, 'file', content)

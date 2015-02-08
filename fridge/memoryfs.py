@@ -9,11 +9,16 @@ import stat as st
 
 
 class Stat(object):
-    def __init__(self):
+    def __init__(self, other=None):
         self.st_mode = 0
         self.st_atime = 0.
         self.st_mtime = 0.
         self.st_size = 0
+
+        if other is not None:
+            for attr in dir(self):
+                if not attr.startswith('_'):
+                    setattr(self, attr, getattr(other, attr))
 
     def __eq__(self, other):
         for attr in dir(self):
@@ -322,7 +327,7 @@ class MemoryFS(MemoryFSNode):
         del node.children[dirname]
 
     def stat(self, path):
-        return self.get_node(self._split_whole_path(path)).status
+        return Stat(self.get_node(self._split_whole_path(path)).status)
 
     def symlink(self, src, link_name):
         """Create a symbolic link.
