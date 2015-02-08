@@ -31,7 +31,7 @@ class ContentAddressableStorage(object):
     def store(self, filepath):
         """Stores a file in the storage.
 
-        The original file will be deleted and replaced by a symbolic link.
+        The original file will be deleted.
 
         Parameters
         ----------
@@ -45,6 +45,8 @@ class ContentAddressableStorage(object):
         """
         key = self._calc_checksum(filepath)
         target_path = self.get_path(key)
+        if self._fs.exists(target_path):
+            return key
 
         try:
             self._fs.makedirs(os.path.dirname(target_path))

@@ -32,6 +32,12 @@ class TestContentAddressableStorage(object):
             content = f.read()
         assert content == u'dummy content'
 
+    def test_allows_to_store_files_with_identical_content(self, fs, cas):
+        write_file(fs, 'file1', u'content')
+        write_file(fs, 'file2', u'content')
+        key1 = cas.store('file1')
+        key2 = cas.store('file2')
+        assert key1 == key2
 
     def test_file_removed_after_store(self, fs, cas):
         with fs.open('testfile', 'w') as f:

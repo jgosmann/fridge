@@ -156,6 +156,13 @@ class TestFridgeCore(object):
         fridge_core.checkout_blob(key, 'path')
         assert fs.get_node(['path']).content.decode() == u'content'
 
+    def test_handles_blobs_with_identical_content(self, fs, fridge_core):
+        write_file(fs, 'file1', u'content')
+        write_file(fs, 'file2', u'content')
+        key1 = fridge_core.add_blob('file1')
+        key2 = fridge_core.add_blob('file2')
+        assert key1 == key2
+
     def test_writing_and_reading_snapshot(self, fs):
         s = self._create_snapshot()
 
@@ -292,5 +299,3 @@ class TestFridge(object):
         assert fridge.is_clean()
         fs.unlink('file')
         assert not fridge.is_clean()
-
-    # TODO two files with same content
