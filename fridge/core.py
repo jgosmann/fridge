@@ -128,8 +128,8 @@ class Commit(DataObject, Serializable):
     def serialize(self):
         # pylint: disable=no-member
         return (
-            'timestamp {timestamp:.3f}\nparent {parent}\n' +
-            'snapshot {snapshot}\n\n{message}').format(
+            u'timestamp {timestamp:.3f}\nparent {parent}\n' +
+            u'snapshot {snapshot}\n\n{message}').format(
                 timestamp=self.timestamp, parent=self.parent or '',
                 snapshot=self.snapshot, message=self.message)
 
@@ -143,7 +143,7 @@ class Branch(DataObject, Serializable):
 
     def serialize(self):
         # pylint: disable=no-member
-        return self.commit
+        return u'{c}'.format(c=self.commit)
 
 
 class Head(DataObject, Serializable):
@@ -177,7 +177,7 @@ class FridgeCore(object):
     def init(cls, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
         obj = cls(path, fs, cas_factory)
-        obj.set_branch(u'master', u'')
+        obj.set_branch(u'master', '')
         obj.set_head(Head(Head.BRANCH, u'master'))
         return obj
 
