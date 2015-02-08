@@ -205,6 +205,9 @@ class FridgeCore(object):
             f.write(c.serialize())
         return self._commits.store(tmp_file)
 
+    def is_commit(self, key):
+        return self._fs.exists(self._commits.get_path(key))
+
     @staticmethod
     def parse_snapshot(serialized_snapshot):
         return [SnapshotItem.parse(line)
@@ -268,10 +271,18 @@ class Fridge(object):
         self._fs = fs
 
     def refparse(self, ref):
+        potential_types = []
         if self._core.is_branch(ref):
-            return Reference(Reference.BRANCH, ref)
+            potential_types.append(Reference.BRANCH)
+        if self._core.is_commit(ref):
+            potential_types.append(Reference.COMMIT)
+
+        if len(potential_types) < 1:
+            raise UnknownReferenceError()
+        elif len(potential_types) > 1:
+            raise AmbiguousReferenceError()
         else:
-            return Reference(Reference.COMMIT, ref)
+            return Reference(potential_types[0], ref)
 
     def commit(self, message=""):
         snapshot = []
@@ -299,8 +310,8 @@ class Fridge(object):
         self.checkout()
 
     def branch(self, name):
-        # FIXME check overwrite etc
-        # FIXME test this
+        if self._core.is_branch(name):
+            raise BranchExistsError()
         self._core.set_branch(name, self._core.get_head_key())
         self._core.set_head(Reference(Reference.BRANCH, name))
 
@@ -340,3 +351,23 @@ class Fridge(object):
             key = commits[-1][1].parent
             commits.append((key, self._core.read_commit(key)))
         return commits
+
+
+class FridgeError(RuntimeError):
+    pass
+
+
+class FridgeReferenceError(FridgeError):
+    pass
+
+
+class AmbiguousReferenceError(FridgeReferenceError):
+    pass
+
+
+class BranchExistsError(FridgeError):
+    pass
+
+
+class UnknownReferenceError(FridgeReferenceError):
+    pass

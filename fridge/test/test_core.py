@@ -5,8 +5,8 @@ from mock import MagicMock
 import pytest
 
 from fridge.core import (
-    Branch, Commit, DataObject, Fridge, FridgeCore, Reference, SnapshotItem,
-    Stat)
+    AmbiguousReferenceError, Branch, BranchExistsError, Commit, DataObject,
+    Fridge, FridgeCore, Reference, SnapshotItem, UnknownReferenceError, Stat)
 from fridge.fstest import write_file
 from fridge.memoryfs import MemoryFS
 
@@ -235,6 +235,30 @@ class TestFridge(object):
         key = fridge_core.resolve_branch(ref.ref)
         assert fridge.refparse(key) == Reference(Reference.COMMIT, key)
 
-        # TODO ambiguous ref
+    def test_refparse_with_ambiguous_ref(self, fridge, fridge_core, fs):
+        write_file(fs, 'mockfile')
+        fridge.commit()
+        key = fridge_core.get_head_key()
+        fridge.branch(key)
+        with pytest.raises(AmbiguousReferenceError):
+            fridge.refparse(key)
+
+    def test_refparse_with_nonexisting_ref(self, fridge):
+        with pytest.raises(UnknownReferenceError):
+            fridge.refparse('foo')
+
+    def test_branch_sets_new_head(self, fridge, fridge_core, fs):
+        write_file(fs, 'mockfile')
+        fridge.commit()
+        assert fridge_core.get_head() == Reference(Reference.BRANCH, 'master')
+        fridge.branch('branch')
+        assert fridge_core.get_head() == Reference(Reference.BRANCH, 'branch')
+
+    def test_branch_exists(self, fridge, fs):
+        write_file(fs, 'mockfile')
+        fridge.commit()
+        fridge.branch('branch')
+        with pytest.raises(BranchExistsError):
+            fridge.branch('branch')
 
     # TODO prevent empty commit
