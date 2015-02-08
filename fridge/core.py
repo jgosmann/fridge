@@ -146,7 +146,7 @@ class Branch(DataObject, Serializable):
         return u'{c}'.format(c=self.commit)
 
 
-class Head(DataObject, Serializable):
+class Reference(DataObject, Serializable):
     __slots__ = ['type', 'ref']
 
     COMMIT = u'commit'
@@ -172,13 +172,14 @@ class FridgeCore(object):
             path, '.fridge', 'snapshots'), fs)
         self._commits = cas_factory(os.path.join(
             path, '.fridge', 'commits'), fs)
+        self._branch_dir = os.path.join(self._path, '.fridge', 'branches')
 
     @classmethod
     def init(cls, path, fs=fridge.fs, cas_factory=ContentAddressableStorage):
         fs.mkdir(os.path.join(path, '.fridge'))
         obj = cls(path, fs, cas_factory)
         obj.set_branch(u'master', '')
-        obj.set_head(Head(Head.BRANCH, u'master'))
+        obj.set_head(Reference(Reference.BRANCH, u'master'))
         return obj
 
     def add_blob(self, path):
@@ -197,7 +198,7 @@ class FridgeCore(object):
 
     def add_commit(self, snapshot_key, message):
         # pylint: disable=no-member
-        commit = self.resolve_ref(self.get_head().ref)
+        commit = self.resolve_ref(self.get_head())
         c = Commit(utc_time(), snapshot_key, message, commit)
         tmp_file = os.path.join(self._path, '.fridge', 'tmp')
         with self._fs.open(tmp_file, 'w') as f:
@@ -225,27 +226,36 @@ class FridgeCore(object):
     def get_head(self):
         path = os.path.join(self._path, '.fridge', 'head')
         with self._fs.open(path, 'r') as f:
-            return Head.parse(f.read())
+            return Reference.parse(f.read())
+
+    def get_head_key(self):
+        return self.resolve_ref(self.get_head())
 
     def set_branch(self, name, commit):
-        branches_dir = os.path.join(self._path, '.fridge', 'branches')
         try:
-            self._fs.makedirs(branches_dir)
+            self._fs.makedirs(self._branch_dir)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
-        path = os.path.join(branches_dir, name)
+        path = os.path.join(self._branch_dir, name)
         with self._fs.open(path, 'w') as f:
             f.write(Branch(commit).serialize())
 
+    def is_branch(self, name):
+        branch_path = os.path.join(self._branch_dir, name)
+        return self._fs.exists(branch_path)
+
+    def resolve_branch(self, name):
+        branch_path = os.path.join(self._branch_dir, name)
+        with self._fs.open(branch_path, 'r') as f:
+            # pylint: disable=no-member
+            return Branch.parse(f.read()).commit
+
     def resolve_ref(self, ref):
-        branch_path = os.path.join(self._path, '.fridge', 'branches', ref)
-        if self._fs.exists(branch_path):
-            with self._fs.open(branch_path, 'r') as f:
-                # pylint: disable=no-member
-                return Branch.parse(f.read()).commit
-        else:
-            return ref
+        if ref.type == Reference.COMMIT:
+            return ref.ref
+        elif ref.type == Reference.BRANCH:
+            return self.resolve_branch(ref.ref)
 
     def checkout_blob(self, key, path):
         source_path = self._blobs.get_path(key)
@@ -256,6 +266,12 @@ class Fridge(object):
     def __init__(self, fridge_core, fs=fridge.fs):
         self._core = fridge_core
         self._fs = fs
+
+    def refparse(self, ref):
+        if self._core.is_branch(ref):
+            return Reference(Reference.BRANCH, ref)
+        else:
+            return Reference(Reference.COMMIT, ref)
 
     def commit(self, message=""):
         snapshot = []
@@ -271,10 +287,10 @@ class Fridge(object):
         commit_hash = self._core.add_commit(snapshot_hash, message)
 
         head = self._core.get_head()
-        if head.type == Head.COMMIT:
+        if head.type == Reference.COMMIT:
             head.ref = commit_hash
             self._core.set_head(head)
-        elif head.type == Head.BRANCH:
+        elif head.type == Reference.BRANCH:
             self._core.set_branch(head.ref, commit_hash)
         else:
             raise AssertionError("Invalid head type '{t}'.".format(
@@ -285,20 +301,17 @@ class Fridge(object):
     def branch(self, name):
         # FIXME check overwrite etc
         # FIXME test this
-        self._core.set_branch(
-            name, self._core.resolve_ref(self._core.get_head().ref))
-        self._core.set_head(Head(Head.BRANCH, name))
+        self._core.set_branch(name, self._core.get_head_key())
+        self._core.set_head(Reference(Reference.BRANCH, name))
 
     def checkout(self, ref=None):
-        head_key = self._core.resolve_ref(self._core.get_head().ref)
+        head_key = self._core.get_head_key()
         if ref is None:
             key = head_key
         else:
+            ref = self.refparse(ref)
+            self._core.set_head(ref)
             key = self._core.resolve_ref(ref)
-            if key == key:  # FIXME better check
-                self._core.set_head(Head(Head.COMMIT, key))
-            else:
-                self._core.set_head(Head(Head.BRANCH, ref))
 
         commit = self._core.read_commit(key)
         head_commit = self._core.read_commit(head_key)
@@ -321,7 +334,7 @@ class Fridge(object):
                 item.path, (item.status.st_atime, item.status.st_mtime))
 
     def log(self):
-        head = self._core.resolve_ref(self._core.get_head().ref)
+        head = self._core.get_head_key()
         commits = [(head, self._core.read_commit(head))]
         while commits[-1][1].parent is not None:
             key = commits[-1][1].parent

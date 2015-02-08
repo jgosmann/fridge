@@ -5,7 +5,8 @@ from mock import MagicMock
 import pytest
 
 from fridge.core import (
-    Branch, Commit, DataObject, Fridge, FridgeCore, Head, SnapshotItem, Stat)
+    Branch, Commit, DataObject, Fridge, FridgeCore, Reference, SnapshotItem,
+    Stat)
 from fridge.fstest import write_file
 from fridge.memoryfs import MemoryFS
 
@@ -116,17 +117,17 @@ def test_branch_serialization_roundtrip():
     assert a == b
 
 
-def test_head_with_commit_serialization_roundtrip():
-    a = Head(Head.COMMIT, 64 * 'a')
+def test_reference_with_commit_serialization_roundtrip():
+    a = Reference(Reference.COMMIT, 64 * 'a')
     ser = a.serialize()
-    b = Head.parse(ser)
+    b = Reference.parse(ser)
     assert a == b
 
 
-def test_head_with_branch_serialization_roundtrip():
-    a = Head(Head.BRANCH, 'branch_name')
+def test_reference_with_branch_serialization_roundtrip():
+    a = Reference(Reference.BRANCH, 'branch_name')
     ser = a.serialize()
-    b = Head.parse(ser)
+    b = Reference.parse(ser)
     assert a == b
 
 
@@ -176,11 +177,12 @@ class TestFridgeCore(object):
 
     def test_setting_and_getting_head(self, fs):
         fridge = FridgeCore.init(os.curdir, fs)
-        fridge.set_head(Head(Head.COMMIT, u'ab12cd'))
+        fridge.set_head(Reference(Reference.COMMIT, u'ab12cd'))
         del fridge
 
         fridge = FridgeCore(os.curdir, fs)
-        assert fridge.get_head() == Head(Head.COMMIT, u'ab12cd')
+        assert fridge.get_head() == Reference(Reference.COMMIT, u'ab12cd')
+        assert fridge.get_head_key() == u'ab12cd'
 
     def test_setting_and_getting_branch(self, fs):
         fridge = FridgeCore.init(os.curdir, fs)
@@ -188,7 +190,8 @@ class TestFridgeCore(object):
         del fridge
 
         fridge = FridgeCore(os.curdir, fs)
-        assert fridge.resolve_ref('test_branch') == u'ab12cd'
+        assert fridge.is_branch('test_branch')
+        assert fridge.resolve_branch('test_branch') == u'ab12cd'
 
     def test_checkout_blob_on_checkedout(self, fs, fridge_core):
         write_file(fs, 'mockfile', u'content')
@@ -218,8 +221,20 @@ class TestFridge(object):
             commit_dict[k] = v
         fs = MagicMock()
         core_mock = MagicMock()
-        core_mock.get_head.return_value = Head(Head.COMMIT, 'headhash')
-        core_mock.resolve_ref.return_value = 'headhash'
+        core_mock.get_head_key.return_value = 'headhash'
         core_mock.read_commit.side_effect = lambda k: commit_dict[k]
 
         assert commits == Fridge(core_mock, fs).log()
+
+    def test_refparse_commit(self, fridge, fridge_core, fs):
+        write_file(fs, 'mockfile')
+        fridge.commit()
+        ref = fridge_core.get_head()
+        assert ref.type == Reference.BRANCH
+        assert fridge.refparse(ref.ref) == ref
+        key = fridge_core.resolve_branch(ref.ref)
+        assert fridge.refparse(key) == Reference(Reference.COMMIT, key)
+
+        # TODO ambiguous ref
+
+    # TODO prevent empty commit
