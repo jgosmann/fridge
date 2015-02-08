@@ -4,23 +4,10 @@ import stat
 from mock import MagicMock
 import pytest
 
-from fridge.memoryfs import MemoryFS
 from fridge.core import (
     Branch, Commit, DataObject, Fridge, FridgeCore, Head, SnapshotItem, Stat)
-
-
-class CasMockFactory(object):
-    def __init__(self):
-        self._cas = {}
-
-    def __call__(self, path, fs):
-        path = os.path.relpath(path, '.fridge')
-        if path not in self._cas:
-            self._cas[path] = MagicMock()
-        return self._cas[path]
-
-    def __getitem__(self, key):
-        return self._cas[key]
+from fridge.fstest import write_file
+from fridge.memoryfs import MemoryFS
 
 
 def create_file_status():
@@ -33,18 +20,18 @@ def create_file_status():
 
 
 @pytest.fixture
-def cas_factory():
-    return CasMockFactory()
-
-
-@pytest.fixture
 def fs():
     return MemoryFS()
 
 
 @pytest.fixture
-def fridge_core(fs, cas_factory):
-    return FridgeCore.init(os.curdir, fs, cas_factory)
+def fridge_core(fs):
+    return FridgeCore.init(os.curdir, fs)
+
+
+@pytest.fixture
+def fridge(fridge_core, fs):
+    return Fridge(fridge_core, fs)
 
 
 class TestDataObject(object):
@@ -160,9 +147,12 @@ class TestFridgeCore(object):
         parsed = FridgeCore.parse_snapshot(serialized)
         assert snapshot == parsed
 
-    def test_add_blob(self, cas_factory, fridge_core):
-        fridge_core.add_blob('path')
-        cas_factory['blobs'].store.assert_called_once_with('path')
+    def test_add_blob_and_checkout_blob(self, fs, fridge_core):
+        write_file(fs, 'path', u'content')
+        key = fridge_core.add_blob('path')
+        assert not fs.exists('path')
+        fridge_core.checkout_blob(key, 'path')
+        assert fs.get_node(['path']).content.decode() == u'content'
 
     def test_writing_and_reading_snapshot(self, fs):
         s = self._create_snapshot()
@@ -200,68 +190,23 @@ class TestFridgeCore(object):
         fridge = FridgeCore(os.curdir, fs)
         assert fridge.resolve_ref('test_branch') == u'ab12cd'
 
-    def test_checkout_blob(self, fs, cas_factory, fridge_core):
-        with fs.open('mockfile', 'w') as f:
-            f.write(u'content')
-        cas_factory['blobs'].get_path.return_value = 'mockfile'
-        fridge_core.checkout_blob('key', 'target')
-        assert fs.get_node(
-            ['mockfile']).content == fs.get_node(['target']).content
-
-    def test_checkout_blob_on_checkedout(self, fs, cas_factory, fridge_core):
-        with fs.open('mockfile', 'w') as f:
-            f.write(u'content')
-        fs.symlink('mockfile', 'target')
-        cas_factory['blobs'].get_path.return_value = 'mockfile'
-        fridge_core.checkout_blob('key', 'target')
-        assert fs.get_node(
-            ['mockfile']).content == fs.get_node(['target']).content
+    def test_checkout_blob_on_checkedout(self, fs, fridge_core):
+        write_file(fs, 'mockfile', u'content')
+        key = fridge_core.add_blob('mockfile')
+        fridge_core.checkout_blob(key, 'mockfile')
+        fridge_core.checkout_blob(key, 'mockfile')
+        assert fs.get_node(['mockfile']).content.decode() == u'content'
 
 
 class TestFridge(object):
-    def test_commit(self, fs):
-        with fs.open('mockfile', 'w') as f:
-            f.write(u'content')
-        core_mock = MagicMock()
-        core_mock.add_blob.return_value = 'hash'
-        core_mock.add_snapshot.return_value = 'snapshot_hash'
-        core_mock.add_commit.return_value = 'commit_hash'
-        core_mock.get_head.return_value = Head(Head.BRANCH, 'master')
-        fridge = Fridge(core_mock, fs)
+    def test_commit_and_checkout(self, fridge, fs):
+        write_file(fs, 'mockfile', u'content')
+        status = fs.stat('mockfile')
         fridge.commit(message='msg')
-
-        call_path = os.path.join(os.curdir, 'mockfile')
-        core_mock.add_blob.assert_called_once_with(call_path)
-        core_mock.add_snapshot.assert_called_once_with([SnapshotItem(
-            'hash', call_path, fs.stat('mockfile'))])
-        core_mock.add_commit.assert_called_once_with(
-            'snapshot_hash', 'msg')
-        core_mock.set_branch.assert_called_once('master', 'commit_hash')
-
-    def test_checkout(self):
-        # TODO check checkout of different commit
-        fs = MagicMock()
-        core_mock = MagicMock()
-        core_mock.get_head.return_value = Head(Head.COMMIT, 'headhash')
-        core_mock.resolve_ref.return_value = 'headhash'
-        core_mock.read_commit.return_value = Commit(
-            timestamp=1.23, snapshot='snapshot_hash', message='msg',
-            parent=None)
-        status = create_file_status()
-        core_mock.read_snapshot.return_value = [
-            SnapshotItem('hash', 'file', status)]
-
-        fridge = Fridge(core_mock, fs)
+        fs.unlink('mockfile')
         fridge.checkout()
-
-        # pylint: disable=no-member
-        core_mock.get_head.assert_called_once_with()
-        core_mock.read_commit.assert_called_with('headhash')
-        core_mock.read_snapshot.assert_called_with('snapshot_hash')
-        core_mock.checkout_blob.assert_called_once_with('hash', 'file')
-        fs.chmod.assert_called_once_with('file', stat.S_IMODE(status.st_mode))
-        fs.utime.assert_called_once_with(
-            'file', (status.st_atime, status.st_mtime))
+        assert fs.get_node(['mockfile']).content.decode() == u'content'
+        assert fs.stat('mockfile') == status
 
     def test_log(self):
         commits = [

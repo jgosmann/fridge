@@ -15,6 +15,13 @@ class Stat(object):
         self.st_mtime = 0.
         self.st_size = 0
 
+    def __eq__(self, other):
+        for attr in dir(self):
+            if not attr.startswith('_'):
+                if getattr(self, attr) != getattr(other, attr):
+                    return False
+        return True
+
 
 class MemoryFSNode(object):
     """Base class for nodes in an in-memory file system.
