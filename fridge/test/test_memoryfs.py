@@ -115,7 +115,8 @@ class TestMemoryFS(object):
         fs.mkdir('dir')
         s = stat.S_IRWXU
         fs.chmod('dir', s)
-        assert fs.stat('dir').st_mode == s
+        assert stat.S_IMODE(fs.stat('dir').st_mode) == s
+        assert stat.S_ISDIR(fs.stat('dir').st_mode)
 
     def test_respects_writable_mode_of_files(self, fs):
         fs = MemoryFS()

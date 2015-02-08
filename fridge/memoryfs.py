@@ -249,7 +249,8 @@ class MemoryFS(MemoryFSNode):
             raise OSError(errno.EEXIST, 'Directory exists already.', path)
 
     def chmod(self, path, mode):
-        self.get_node(self._split_whole_path(path)).status.st_mode = mode
+        s = self.get_node(self._split_whole_path(path)).status
+        s.st_mode = st.S_IFMT(s.st_mode) | st.S_IMODE(mode)
 
     def copy(self, src, dest):
         """Copy a file.
