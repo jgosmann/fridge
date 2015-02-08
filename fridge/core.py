@@ -299,6 +299,9 @@ class Fridge(object):
             return Reference(potential_types[0], ref)
 
     def commit(self, message=""):
+        if self.is_clean():
+            raise NothingToCommitError()
+
         snapshot = []
         for path in self._list_files():
             stat = self._fs.stat(path)
@@ -408,6 +411,10 @@ class AmbiguousReferenceError(FridgeReferenceError):
 
 
 class BranchExistsError(FridgeError):
+    pass
+
+
+class NothingToCommitError(FridgeError):
     pass
 
 

@@ -6,7 +6,8 @@ import pytest
 
 from fridge.core import (
     AmbiguousReferenceError, Branch, BranchExistsError, Commit, DataObject,
-    Fridge, FridgeCore, Reference, SnapshotItem, UnknownReferenceError, Stat)
+    Fridge, FridgeCore, NothingToCommitError, Reference, SnapshotItem,
+    UnknownReferenceError, Stat)
 from fridge.fstest import write_file
 from fridge.memoryfs import MemoryFS
 
@@ -211,6 +212,14 @@ class TestFridge(object):
         assert fs.get_node(['mockfile']).content.decode() == u'content'
         assert fs.stat('mockfile') == status
 
+    def test_commits_only_if_dirty(self, fridge, fs):
+        with pytest.raises(NothingToCommitError):
+            fridge.commit()
+        write_file(fs, 'file')
+        fridge.commit()
+        with pytest.raises(NothingToCommitError):
+            fridge.commit()
+
     def test_log(self):
         commits = [
             ('headhash', Commit(2., 'snapshot2', 'msg2', 'c1')),
@@ -284,5 +293,4 @@ class TestFridge(object):
         fs.unlink('file')
         assert not fridge.is_clean()
 
-    # TODO prevent empty commit
     # TODO two files with same content
